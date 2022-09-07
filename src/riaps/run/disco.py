@@ -31,6 +31,7 @@ class DiscoClient(object):
         self.localNames = parentActor.localNames
         self.internalNames = parentActor.internalNames
         self.context = zmq.Context()
+        self.pendingRpc = False
         
     def start(self):
         self.logger.info("starting")
@@ -41,6 +42,38 @@ class DiscoClient(object):
         self.socket.connect(endpoint)    
         self.channel = self.context.socket(zmq.PAIR)
 
+    def sendToDisco(self,msgBytes,loc,shut):
+        try:
+            self.socket.send(msgBytes)
+            return True
+        except Exception as e:
+            self.logger.error("%s: send to disco failed: %s" % (loc,str(e.args)))
+            if shut:
+                self.socket.close()
+                self.socket = None
+            return False
+
+    def recvFromDisco(self,loc,shut):
+        try:
+            respBytes = self.socket.recv()
+            return respBytes
+        except Exception as e:
+            self.logger.error("%s: recv from disco failed: %s" % (loc,str(e.args)))
+            if shut:
+                self.socket.close()
+                self.socket = None
+            return None
+    
+    def rpcDisco(self,msgBytes,loc,shut):
+        if self.sendToDisco(msgBytes,loc,shut) is False: 
+            raise SetupError("%s: Can't send to disco" % loc)
+        self.pendingRpc = True
+        respBytes = self.recvFromDisco(loc,True)
+        self.pendingRpc = False
+        if respBytes is None: 
+            raise SetupError("%s: Can't receive from disco" %loc)
+        return respBytes
+        
     def registerActor(self):
         self.logger.info("registerActor")
         reqt = disco_capnp.DiscoReq.new_message()
@@ -52,23 +85,7 @@ class DiscoClient(object):
         appMessage.isDevice = self.actor.isDevice()
                   
         msgBytes = reqt.to_bytes()
-        
-        try:
-            self.socket.send(msgBytes)
-        except Exception as e:
-            self.logger.error("registerActor: Unable to register app with disco: %s" % str(e.args))
-            self.socket.close()
-            self.socket = None
-            return
-        
-        try:
-            respBytes = self.socket.recv()
-        except Exception as e:
-            self.logger.error("registerActor: No response from disco: %s" % str(e.args))
-            self.socket.close()
-            self.socket = None
-            return
-        
+        respBytes = self.rpcDisco(msgBytes,"registerActor",True)
         resp = disco_capnp.DiscoRep.from_bytes(respBytes)
         
         which = resp.which()
@@ -115,16 +132,14 @@ class DiscoClient(object):
         reqMsgPath.msgType = msgType 
         reqMsgPath.kind = portKind
         reqMsgPath.scope = portScope.scope()
+        
         msgBytes = req.to_bytes()
-        self.socket.send(msgBytes)
-        try:
-            repBytes = self.socket.recv()
-        except Exception as e:
-            raise SetupError("handleRegReq: No response from disco: %s", str(e.args)) 
-        rep = disco_capnp.DiscoRep.from_bytes(repBytes)
-        which = rep.which()
+        respBytes = self.rpcDisco(msgBytes,"handleRegReq",True)
+        resp = disco_capnp.DiscoRep.from_bytes(respBytes)
+        
+        which = resp.which()
         if which == 'serviceReg':
-            repMessage = rep.serviceReg
+            repMessage = resp.serviceReg
             status = repMessage.status
             if status == 'err':
                 raise SetupError("handleRegReq: Error response from disco")
@@ -159,16 +174,13 @@ class DiscoClient(object):
         reqMsgClient.portName = portName
         
         msgBytes = req.to_bytes()
-        self.socket.send(msgBytes)
-        try:
-            repBytes = self.socket.recv()
-        except Exception as e:
-            raise SetupError("handleLookupReq: No response from disco: %s", str(e.args))
-        rep = disco_capnp.DiscoRep.from_bytes(repBytes)
-        which = rep.which()
+        respBytes = self.rpcDisco(msgBytes,"handleLookupReq",True)
+        resp = disco_capnp.DiscoRep.from_bytes(respBytes)
+        
+        which = resp.which()
         returnValue = []
         if which == 'serviceLookup':
-            repMessage = rep.serviceLookup
+            repMessage = resp.serviceLookup
             status = repMessage.status
             if status == 'err':
                 raise SetupError('handleLookupReq: error response from disco')
@@ -229,41 +241,6 @@ class DiscoClient(object):
         result = self.handleLookupReq(lookupReqBundle)
         self.handleRegReq(regReqBundle)
         return result
-        
-#         port = 0
-#         componentId = ""
-#         reqt = disco_capnp.DiscoReq.new_message()
-#         groupMessage = reqt.init('groupJoin')
-#         groupMessage.appName = self.appName
-#         groupId = disco_capnp.GroupId.new_message()
-#         groupId.groupType = groupType
-#         groupId.groupName = instName
-#         groupMessage.groupId = groupId
-#         services = groupMessage.init('services',1)
-#         services[0].messageType = messageType
-#         services[0].address = str(host) + ':' + str(port)
-#         groupMessage.componentId = str(componentId)
-#         groupMessage.pid = self.actor.pid
-#         
-#         msgBytes = reqt.to_bytes()
-#         self.socket.send(msgBytes)
-#         
-#         try:
-#             repBytes = self.socket.recv()
-#         except Exception as e:
-#             raise SetupError("No response from disco service : {1}".format(e.errno, e.strerror))
-#         rep = disco_capnp.DiscoRep.from_bytes(repBytes)
-#         which = rep.which()
-#         if which == 'groupJoin':
-#             repMessage = rep.groupJoin
-#             status = repMessage.status
-#             if status == 'err':
-#                 raise SetupError("Error response from disco service at group registration")
-#             else:
-#                 pass
-#         else:
-#             raise SetupError("Unexpected response from disco service at group registration")
-#         return
     
     def terminate(self):
         self.logger.info("terminating")
@@ -274,43 +251,33 @@ class DiscoClient(object):
         appMessage = reqt.init('actorUnreg')
         appMessage.appName = self.appName
         appMessage.version = '0.0.0'
-        appMessage.actorName = self.actor.name # "%s.%s" % (self.actor.name,self.actor.iName) if self.actor.isDevice() else self.actor.name
+        appMessage.actorName = self.actor.name 
+        # "%s.%s" % (self.actor.name,self.actor.iName) if self.actor.isDevice() else self.actor.name
         appMessage.pid = self.actor.pid
                   
         msgBytes = reqt.to_bytes()
         
         try:
-            self.socket.send(msgBytes)
-        except Exception as e:
-            self.logger.error("terminate: Unable to unregister app with disco: %s" % str(e.args))
-            self.socket.close()
-            self.socket = None
-            return
-        
-        try:
-            respBytes = self.socket.recv()
-        except Exception as e:
-            self.logger.error("terminate: No response from disco: %s" % str(e.args))
-            self.socket.close()
-            self.socket = None
-            return
-        
-        resp = disco_capnp.DiscoRep.from_bytes(respBytes)
-        
-        which = resp.which()
-        if which == 'actorUnreg':
-            respMessage = resp.actorUnreg
-            status = respMessage.status
-            port = respMessage.port
-            if status == 'ok':
-                self.logger.info("terminate: disconnecting 127.0.0.1:%s" % str(port))
-                try:
-                    self.channel.disconnect("tcp://127.0.0.1:" + str(port))
-                except:
-                    pass
-            else:
-                raise SetupError("terminate: Error response from disco")
-        else:
-            raise SetupError("terminate: Unexpected response from disco")
+            if self.pendingRpc:             # Discard pending Rpc result
+                self.logger.info("terminate: pending rpc")
+                _discard = self.recvFromDisco("unregister",True) 
+            self.logger.info("terminate: unregistering")
+            respBytes = self.rpcDisco(msgBytes,"unregister",True)
+            resp = disco_capnp.DiscoRep.from_bytes(respBytes)
+            
+            which = resp.which()
+            if which == 'actorUnreg':
+                respMessage = resp.actorUnreg
+                status = respMessage.status
+                port = respMessage.port
+                if status == 'ok':
+                    self.logger.info("terminate: disconnecting 127.0.0.1:%s" % str(port))
+                    try:
+                        self.channel.disconnect("tcp://127.0.0.1:" + str(port))
+                    except:
+                        pass
+        except:
+            pass                # Ignore all errors if disco is not running anymore
+
         self.logger.info("terminated")
     
