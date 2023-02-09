@@ -76,9 +76,13 @@ class ControlCLIClient(object):
 
         def do_c(self, arg):
             '''Wait until listed clients are connected: c IPADDR1 [IPADDR2 ...]'''
-            expectedClients = set(arg.split(', '))
-            while True:
-                clients = set(self.parent.getClients())
+            expectedClients = set(arg.split())
+            print(f"Expecting: {expectedClients}")
+            count = 0
+            while count < 5:
+                count += 1
+                clients = set(self.parent.cmdGetClients())
+                print(clients)
                 if expectedClients.issubset(clients):
                     break
                 self.stdout.write(f"Waiting for: {expectedClients not in clients}\n")
@@ -228,6 +232,12 @@ class ControlCLIClient(object):
         Clears the app entry.
         '''
         self.appName = ''
+
+    def cmdGetClients(self):
+        '''
+        Gets list of connected clients
+        '''
+        return self.controller.getClients()
     
     def cmdNumClient(self):
         '''
