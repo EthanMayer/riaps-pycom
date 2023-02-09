@@ -17,6 +17,7 @@ import logging
 import cmd
 import traceback
 import subprocess
+import readline
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk
@@ -26,6 +27,7 @@ from threading import RLock
 cmdLock = RLock()  # Global GUI lock
 cmdClient = None
 
+IPv4_format = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}')
 
 class ControlCLIClient(object):
     '''
@@ -73,20 +75,47 @@ class ControlCLIClient(object):
         def __init__(self,parent):
             super(parent.CtrlCmdShell, self).__init__()
             self.parent = parent
+            self.use_rawinput = False
 
         def do_c(self, arg):
-            '''Wait until listed clients are connected: c IPADDR1 [IPADDR2 ...]'''
-            expectedClients = set(arg.split())
-            print(f"Expecting: {expectedClients}")
-            count = 0
-            while count < 5:
-                count += 1
-                clients = set(self.parent.cmdGetClients())
-                print(clients)
-                if expectedClients.issubset(clients):
-                    break
-                self.stdout.write(f"Waiting for: {expectedClients not in clients}\n")
+            '''Wait until listed clients are connected: c IPADDR1 [IPADDR2 ...] TIMEOUT(sec)'''
+            helpstring = 'Usage: c IPADDR1 [IPADDR2 ...] TIMEOUT(sec)'
+            args = arg.split()
+
+            if len(args)<2:
+                self.stdout.write(f"ERROR: too few args!\n{helpstring}\n")
+                self.parent.cmdQuit()
+                return
+
+            try: 
+                timeout = int(args[-1])
+                if (timeout < 1): raise Exception(f"Non-positive timeout value: {timeout}")
+            except Exception as e:
+                self.stdout.write(f"Exception: {e}\nCouldn't parse timeout argument\n")
+                self.parent.cmdQuit()
+                return
+
+            ip_set = set(args[:-1])
+            ip_fails = list(filter(lambda x: x if not IPv4_format.match(x) else False,ip_set))
+            if len(ip_fails) > 0:
+                self.stdout.write(f"ERROR: Invalid IP(s): {ip_fails}\n")
+                self.parent.cmdQuit()
+                return
+
+            ready = False
+            while timeout > 0:
                 time.sleep(1)
+                clients = set(self.parent.cmdGetClients())
+                if ip_set.issubset(clients):
+                    ready = True
+                    break
+                self.stdout.write(f"Waiting for: {ip_set - clients}\n")
+                timeout -= 1
+
+            if not ready:
+                self.stdout.write(f"Timed out waiting for {ip_set - set(self.parent.cmdGetClients())}. Quitting...\n")
+                self.parent.cmdQuit()
+
 
         def do_f(self,arg):
             '''Select app folder: f path'''
