@@ -8,3 +8,4 @@
 from TEST_part import Part
 
 test = Part()
+test.setup()

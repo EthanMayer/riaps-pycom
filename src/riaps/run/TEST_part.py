@@ -12,5 +12,8 @@ from comp import *
 class Part(object):
     
     def __init__(self):
+        self.thread = None
+
+    def setup(self):
         self.thread = CythonComponentThread(self)     # Create component thread just like in part.py
         self.thread.start()

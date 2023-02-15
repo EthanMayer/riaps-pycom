@@ -11,6 +11,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <zmq.h>
+#include <unistd.h>
 
 // Error handling
 void error(char* msg) {
@@ -23,7 +24,7 @@ void error(char* msg) {
 void* test() {
     // Debug identify self
     long thread = pthread_self();
-    printf("Thread %ld: Started send_back function\n", thread);
+    printf("Thread %ld: Started test function\n", thread);
     fflush(stdout);
 
     // Create thread1 receiver pair socket and connect to main's sender pair
@@ -41,7 +42,9 @@ void* test() {
         error("Pair send buffer length incorrect\n");
     }
 
-    printf("Thread %ld: Done!");
+    sleep(1);
+
+    printf("Thread %ld: Done!\n");
 
     // Clean up socket
     zmq_close(sckt);
