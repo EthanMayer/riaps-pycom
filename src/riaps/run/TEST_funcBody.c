@@ -41,7 +41,7 @@ void* test() {
         error("Pair send buffer length incorrect\n");
     }
 
-    printf("Thread %ld: Done!")
+    printf("Thread %ld: Done!");
 
     // Clean up socket
     zmq_close(sckt);

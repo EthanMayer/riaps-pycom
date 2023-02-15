@@ -50,13 +50,14 @@ class CythonComponentThread(threading.Thread):
         self.schedulerType = parent.scheduler
         self.control = None
 
-    def setupControl():
+    #def setupControl():
         # Setup socket to connect to testPart.py
 
-    def setupSockets():
+    #def setupSockets():
 
     def launchThread():
         cdef pthread_t t1    # Thread 1's ID
+        portDict = {}   # Dictionary for ports
 
         # Create main thread pair socket and bind to IP
         cdef void* ctx = z.zmq_ctx_new()
@@ -98,9 +99,9 @@ class CythonComponentThread(threading.Thread):
         if (pthread_join(t1, NULL) == -1):
             error("Could not join thread1 in comp.pyx")
 
-    def run():
+    def run(self):
         # self.setupControl()
-        self.setupSockets()
+        # self.setupSockets()
         # self.setupPoller()
         # self.setupScheduler()
         self.launchThread()
