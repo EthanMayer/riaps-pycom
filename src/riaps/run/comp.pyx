@@ -5,7 +5,7 @@ Created on Feb 15, 2023
 @author: EthanMayer
 '''
 
-# Import c libraries
+# Import C libraries
 from libc.stdlib cimport malloc, free, atoi
 from posix.dlfcn cimport dlopen, dlsym, RTLD_LAZY
 from libc.string cimport strerror
@@ -15,6 +15,9 @@ from cpython.pycapsule cimport PyCapsule_New, PyCapsule_IsValid, PyCapsule_GetPo
 from zmq.backend.cython cimport libzmq as z
 # Import project's pthread .pxd header file
 from pthread cimport pthread_create, pthread_join, pthread_t
+
+# Import Python libraries
+import threading
 
 # Error handling
 cpdef error(msg):
@@ -37,7 +40,7 @@ cdef void* get_sckt(const char* name, portDict):
     else:
         error("Could not retrieve socket pointer from dictionary in comp.pyx")
 
-class CythonComponentThread:
+class CythonComponentThread(threading.Thread):
 
     def __init__(self, parent):
         self.name = parent.name
@@ -54,6 +57,16 @@ class CythonComponentThread:
 
     def launchThread():
         cdef pthread_t t1    # Thread 1's ID
+
+        # Create main thread pair socket and bind to IP
+        cdef void* ctx = z.zmq_ctx_new()
+        cdef void* sckt = z.zmq_socket(ctx, z.ZMQ_PAIR)
+
+        if (z.zmq_bind(sckt, "tcp://127.0.0.1:5556") != 0):
+            error("Could not bind comp.pyx PAIR socket address")
+
+        # Store socket in dictionary
+        store_sckt("Thread1", sckt, portDict)
 
         # Open .so shared library and grab function from it
         cdef char* libpath = "funcBody.so";
@@ -74,9 +87,22 @@ class CythonComponentThread:
             error("Could not receive on comp.pyx PAIR socket")
         print("Cython: received " + str(buf))
 
-    def start():
+        # Clean up socket
+        if (z.zmq_close(get_sckt("Thread1", portDict)) == -1):
+            error("Could not close comp.pyx PAIR socket")
+        if (z.zmq_ctx_destroy(ctx) == -1):
+            error("Could not destroy comp.pyx ZMQ context")
+
+        # Join thread
+        print("Cython: Joining thread")
+        if (pthread_join(t1, NULL) == -1):
+            error("Could not join thread1 in comp.pyx")
+
+    def run():
         # self.setupControl()
         self.setupSockets()
         # self.setupPoller()
         # self.setupScheduler()
         self.launchThread()
+
+

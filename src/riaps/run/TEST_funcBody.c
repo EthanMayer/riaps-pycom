@@ -1,7 +1,7 @@
-//  funcBody.c
+//  TEST_funcBody.c
 //    
 //  Author - Ethan Mayer
-//  Fall 2022
+//  Spring 2023
 //
 //  This is the low-level file for the project, somewhat emulating the dynamically loaded functions that comp.py offloads to threads in RIAPS.
 //  This file contains c functions to be called and spawned in POSIX threads by comp.pyx. They receive information to operate on and return to comp.pyx via ZMQ PAIR sockets.
