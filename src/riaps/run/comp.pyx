@@ -5,6 +5,17 @@ Created on Feb 15, 2023
 @author: EthanMayer
 '''
 
+# Import c libraries
+from libc.stdlib cimport malloc, free, atoi
+from posix.dlfcn cimport dlopen, dlsym, RTLD_LAZY
+from libc.string cimport strerror
+from libc.errno cimport errno
+from libc.stdio cimport sprintf
+from cpython.pycapsule cimport PyCapsule_New, PyCapsule_IsValid, PyCapsule_GetPointer, PyCapsule_GetName
+from zmq.backend.cython cimport libzmq as z
+# Import project's pthread .pxd header file
+from pthread cimport pthread_create, pthread_join, pthread_t
+
 # Error handling
 cpdef error(msg):
     print(msg + ": " + strerror(errno))
