@@ -14,3 +14,6 @@ class CythonComponentThread:
         self.instance = parent.instance
         self.schedulerType = parent.scheduler
         self.control = None
+
+    def run(self):
+        self.runCommand()
