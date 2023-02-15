@@ -69,14 +69,14 @@ class CythonComponentThread(threading.Thread):
         store_sckt("Thread1", sckt, portDict)
 
         # Open .so shared library and grab function from it
-        cdef char* libpath = "funcBody.so";
+        cdef char* libpath = "TEST_funcBody.so";
         cdef void* libhandle = dlopen(libpath, RTLD_LAZY);
 
         if (libhandle == NULL):
             error("Could not open shared library in comp.pyx")
 
         # Create thread with the .so function as body
-        cdef void *thread1 = dlsym(libhandle, func)
+        cdef void *thread1 = dlsym(libhandle, "test")
 
         if (pthread_create(&t1, NULL, thread1, NULL) == -1):
             error("Could not create thread in comp.pyx")

@@ -20,7 +20,7 @@ void error(char* msg) {
 }
 
 // Function to be run on a thread to send back data
-void* send_back() {
+void* test() {
     // Debug identify self
     long thread = pthread_self();
     printf("Thread %ld: Started send_back function\n", thread);
