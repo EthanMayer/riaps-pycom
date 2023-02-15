@@ -44,6 +44,18 @@ void* test() {
 
     sleep(1);
 
+    // Receive build message from main thread
+    char buf2[6];
+    printf("Thread %ld: Ready to receive build message\n", thread);
+    fflush(stdout);
+    if (zmq_recv(sckt, buf2, sizeof(buf2), 0) == -1) {
+        error("Could not receive on thread1 receive socket\n");
+    }
+    printf("Thread %ld: Received message: %s\n", thread, buf2);
+    fflush(stdout);
+
+    sleep(1);
+
     printf("Thread %ld: Done!\n");
 
     // Clean up socket

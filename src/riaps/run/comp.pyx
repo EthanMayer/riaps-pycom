@@ -43,19 +43,20 @@ cdef void* get_sckt(const char* name, portDict):
 class CythonComponentThread(threading.Thread):
 
     def __init__(self, parent):
-        self.name = parent.name
-        self.parent = parent
-        self.context = parent.context
-        self.instance = parent.instance
-        self.schedulerType = parent.scheduler
-        self.control = None
+        threading.Thread.__init__(self,daemon=False)
+        # self.name = parent.name
+        # self.parent = parent
+        # self.context = parent.context
+        # self.instance = parent.instance
+        # self.schedulerType = parent.scheduler
+        # self.control = None
 
     #def setupControl():
         # Setup socket to connect to testPart.py
 
     #def setupSockets():
 
-    def launchThread():
+    def launchThread(self):
         cdef pthread_t t1    # Thread 1's ID
         portDict = {}   # Dictionary for ports
 
@@ -87,6 +88,12 @@ class CythonComponentThread(threading.Thread):
         if (z.zmq_recvbuf(get_sckt("Thread1", portDict), buf, sizeof(buf), 0) == -1):
             error("Could not receive on comp.pyx PAIR socket")
         print("Cython: received " + str(buf))
+
+        # Send build message to thread
+        cdef char* message = 'Build'
+        if (z.zmq_sendbuf(get_sckt("Thread1", portDict), message, sizeof(message), 0) != sizeof(message)):
+            error("Comp.pyx PAIR send build message length incorrect")
+        print("Cython: Sent message: " + str(message))
 
         # Clean up socket
         if (z.zmq_close(get_sckt("Thread1", portDict)) == -1):
