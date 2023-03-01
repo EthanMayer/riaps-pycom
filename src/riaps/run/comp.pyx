@@ -19,6 +19,7 @@ from pthread cimport pthread_create, pthread_join, pthread_t
 
 # Import Python libraries
 import threading
+from time import sleep
 
 # Error handling
 cpdef error(msg):
@@ -58,18 +59,12 @@ class CythonComponentThread(threading.Thread):
     #def setupSockets():
 
     def launchThread(self):
-        cdef pthread_t t1    # Thread 1's ID
+        #cdef pthread_t t1    # Thread 1's ID
         portDict = {}   # Dictionary for ports
 
-        # Create main thread pair socket and bind to IP
-        cdef void* ctx = z.zmq_ctx_new()
-        cdef void* sckt = z.zmq_socket(ctx, z.ZMQ_PAIR)
-
-        if (z.zmq_bind(sckt, "tcp://127.0.0.1:5556") != 0):
-            error("Could not bind comp.pyx PAIR socket address")
-
-        # Store socket in dictionary
-        store_sckt("Thread1", sckt, portDict)
+        # Create main thread pair socket and bind to IP (happens later in fork if statements)
+        cdef void* ctx
+        cdef void* sckt
 
         # Open .so shared library and grab function from it
         cdef char* libpath = "TEST_funcBody.so";
@@ -81,6 +76,7 @@ class CythonComponentThread(threading.Thread):
         # Create thread with the .so function as body
         cdef void *thread1 = dlsym(libhandle, "test")
 
+        # Declare message variables early (outside of fork if statements)
         cdef char buf[6]
         cdef char* message = 'Build'
 
@@ -93,33 +89,62 @@ class CythonComponentThread(threading.Thread):
 
         # Code to run in new process
         elif (pid == 0):
-            if (pthread_create(&t1, NULL, thread1, NULL) == -1):
-                error("Could not create thread in comp.pyx")
+            # Call the function pointer as function, not in a pthread
+            (<void (*)()>thread1)()
+
+            ####### OLD PTHREAD CODE ########
+            #if (pthread_create(&t1, NULL, thread1, NULL) == -1):
+            #    error("Could not create thread in comp.pyx")
             
             # Join thread
-            print("Cython: Joining thread")
-            if (pthread_join(t1, NULL) == -1):
-                error("Could not join thread1 in comp.pyx")
+            #print("Cython: Joining thread")
+            #if (pthread_join(t1, NULL) == -1):
+            #    error("Could not join thread1 in comp.pyx")
+
+            print("Cython Fork: Done!")
+
+            # Wait to verify two processes are running
+            sleep(5)
         
         # Code to run in current process
         else:
-            # Receive "Ready" message to know the thread is ready
-            
+            # Create socket
+            ctx = z.zmq_ctx_new()
+            sckt = z.zmq_socket(ctx, z.ZMQ_PAIR)
+
+            # Bind socket
+            if (z.zmq_bind(sckt, "tcp://127.0.0.1:5556") != 0):
+                error("Could not bind comp.pyx PAIR socket address")
+
+            # Store socket in dictionary
+            store_sckt("Thread1", sckt, portDict)
+
+            # Receive "Ready" message to know the thread is ready (to buffer declared earlier)
             if (z.zmq_recvbuf(get_sckt("Thread1", portDict), buf, sizeof(buf), 0) == -1):
                 error("Could not receive on comp.pyx PAIR socket")
             print("Cython: received " + str(buf))
 
-            # Send build message to thread
-            
+            sleep(1)
+
+            # Send build message (declared earlier) to thread
             if (z.zmq_sendbuf(get_sckt("Thread1", portDict), message, sizeof(message), 0) != sizeof(message)):
                 error("Comp.pyx PAIR send build message length incorrect")
             print("Cython: Sent message: " + str(message))
 
-        # Clean up socket
-        if (z.zmq_close(get_sckt("Thread1", portDict)) == -1):
-            error("Could not close comp.pyx PAIR socket")
-        if (z.zmq_ctx_destroy(ctx) == -1):
-            error("Could not destroy comp.pyx ZMQ context")
+            sleep(1)
+
+            print("Cython: Done!")
+
+            # Clean up socket
+            if (z.zmq_close(get_sckt("Thread1", portDict)) == -1):
+                error("Could not close comp.pyx PAIR socket")
+            if (z.zmq_ctx_destroy(ctx) == -1):
+                error("Could not destroy comp.pyx ZMQ context")
+
+            print("Cython: Exiting")
+
+            # Wait to verify two processes are running
+            sleep(5)
 
         
 
