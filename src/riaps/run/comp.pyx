@@ -10,8 +10,7 @@ from libc.stdlib cimport malloc, free, atoi
 from posix.dlfcn cimport dlopen, dlsym, RTLD_LAZY
 from libc.string cimport strerror
 from libc.errno cimport errno
-from libc.stdio cimport sprintf
-from posix.unistd cimport fork, pid_t
+from libc.stdio cimport sprintf, fork
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_IsValid, PyCapsule_GetPointer, PyCapsule_GetName
 from zmq.backend.cython cimport libzmq as z
 # Import project's pthread .pxd header file
@@ -22,7 +21,7 @@ import threading
 
 # Error handling
 cpdef error(msg):
-    print(msg + ": " + str(strerror(errno)))
+    print(msg + ": " + strerror(errno))
     exit(1)
 
 # Destructor for pointers stored in PyCapsule (only needed for dynamically allocated pointers stored as PyCapsules)
@@ -81,18 +80,12 @@ class CythonComponentThread(threading.Thread):
         # Create thread with the .so function as body
         cdef void *thread1 = dlsym(libhandle, "test")
 
-        cdef char buf[6]
-        cdef char* message = 'Build'
-
         # Fork to create a new process
-        cdef pid_t pid = fork()
-        
-        # Error occured
-        if (pid < 0):
+        if (fork() < 0):
             error("Fork failed in comp.pyx")
 
         # Code to run in new process
-        elif (pid == 0):
+        elif (fork() == 0):
             if (pthread_create(&t1, NULL, thread1, NULL) == -1):
                 error("Could not create thread in comp.pyx")
             
@@ -104,22 +97,22 @@ class CythonComponentThread(threading.Thread):
         # Code to run in current process
         else:
             # Receive "Ready" message to know the thread is ready
-            
+            cdef char buf[6]
             if (z.zmq_recvbuf(get_sckt("Thread1", portDict), buf, sizeof(buf), 0) == -1):
                 error("Could not receive on comp.pyx PAIR socket")
             print("Cython: received " + str(buf))
 
             # Send build message to thread
-            
+            cdef char* message = 'Build'
             if (z.zmq_sendbuf(get_sckt("Thread1", portDict), message, sizeof(message), 0) != sizeof(message)):
                 error("Comp.pyx PAIR send build message length incorrect")
             print("Cython: Sent message: " + str(message))
 
-        # Clean up socket
-        if (z.zmq_close(get_sckt("Thread1", portDict)) == -1):
-            error("Could not close comp.pyx PAIR socket")
-        if (z.zmq_ctx_destroy(ctx) == -1):
-            error("Could not destroy comp.pyx ZMQ context")
+            # Clean up socket
+            if (z.zmq_close(get_sckt("Thread1", portDict)) == -1):
+                error("Could not close comp.pyx PAIR socket")
+            if (z.zmq_ctx_destroy(ctx) == -1):
+                error("Could not destroy comp.pyx ZMQ context")
 
         
 
