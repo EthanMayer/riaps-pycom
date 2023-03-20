@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <zmq.h>
 #include <unistd.h>
+#include "Python.h"
 
 // Error handling
 void error(char* msg) {
@@ -55,6 +56,11 @@ void* test() {
     fflush(stdout);
 
     sleep(1);
+
+    PyObject *pObj = PyBytes_FromString("Hello world\n"); /* Object creation, ref count = 1. */
+    PyObject_Print(pObj, stdout, 0);
+    fflush(stdout);
+    Py_DECREF(pObj);    /* ref count becomes 0, object deallocated.*/
 
     printf("Thread %ld: Done!\n");
 

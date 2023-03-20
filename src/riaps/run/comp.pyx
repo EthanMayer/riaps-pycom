@@ -18,6 +18,7 @@ from pthread cimport pthread_create, pthread_join, pthread_t
 
 # Import Python libraries
 import threading
+import time
 
 # Error handling
 cpdef error(msg):
@@ -106,11 +107,18 @@ class CythonComponentThread(threading.Thread):
         if (pthread_join(t1, NULL) == -1):
             error("Could not join thread1 in comp.pyx")
 
+        self.test()
+
     def run(self):
         # self.setupControl()
         # self.setupSockets()
         # self.setupPoller()
         # self.setupScheduler()
         self.launchThread()
+
+    def test(self):
+        while(True):
+            print("Test")
+            #time.sleep(1)
 
 
