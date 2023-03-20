@@ -102,8 +102,8 @@ class CythonComponentThread(threading.Thread):
         if (z.zmq_ctx_destroy(ctx) == -1):
             error("Could not destroy comp.pyx ZMQ context")
 
-        while(True):
-            print("Test")
+        for i in range(5):
+            print("Cython Main Thread: Test")
             time.sleep(1)
 
         # Join thread
@@ -111,7 +111,9 @@ class CythonComponentThread(threading.Thread):
         if (pthread_join(t1, NULL) == -1):
             error("Could not join thread1 in comp.pyx")
 
-        
+        for i in range(5):
+            print("Cython Main Thread: Test2")
+            time.sleep(1)
 
     def run(self):
         # self.setupControl()

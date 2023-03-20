@@ -23,6 +23,7 @@ void error(char* msg) {
 
 // Function to be run on a thread to send back data
 void* test() {
+    PyGILState_STATE gstate;
     // Debug identify self
     long thread = pthread_self();
     printf("Thread %ld: Started test function\n", thread);
@@ -60,23 +61,25 @@ void* test() {
     printf("State of GIL pre-lock: %d\n", PyGILState_Check());
     fflush(stdout);
 
-    Py_BEGIN_ALLOW_THREADS
-    //PyEval_SaveThread();
-    PyGILState_STATE gstate = PyGILState_Ensure();
+    //Py_BEGIN_ALLOW_THREADS
+    gstate = PyGILState_Ensure();
 
     printf("State of GIL post-lock: %d\n", PyGILState_Check());
     fflush(stdout);
 
     /* Perform Python actions here. */
-    PyObject *pObj = PyBytes_FromString("Hello world\n"); /* Object creation, ref count = 1. */
-    PyObject_Print(pObj, stdout, 0);
-    fflush(stdout);
+    PyObject *pObj = PyBytes_FromString("Thread: Print\n"); /* Object creation, ref count = 1. */
+    for (int i = 0; i < 5; i++) {
+        PyObject_Print(pObj, stdout, 0);
+        fflush(stdout);
+        sleep(1);
+    } 
     Py_DECREF(pObj);    /* ref count becomes 0, object deallocated.*/
     /* evaluate result or handle exception */
 
     /* Release the thread. No Python API allowed beyond this point. */
     PyGILState_Release(gstate);
-    Py_END_ALLOW_THREADS
+    //Py_END_ALLOW_THREADS
 
     printf("Thread %ld: Done!\n");
 
