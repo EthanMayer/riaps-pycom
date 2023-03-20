@@ -102,12 +102,16 @@ class CythonComponentThread(threading.Thread):
         if (z.zmq_ctx_destroy(ctx) == -1):
             error("Could not destroy comp.pyx ZMQ context")
 
+        while(True):
+            print("Test")
+            time.sleep(1)
+
         # Join thread
         print("Cython: Joining thread")
         if (pthread_join(t1, NULL) == -1):
             error("Could not join thread1 in comp.pyx")
 
-        self.test()
+        
 
     def run(self):
         # self.setupControl()
@@ -115,10 +119,3 @@ class CythonComponentThread(threading.Thread):
         # self.setupPoller()
         # self.setupScheduler()
         self.launchThread()
-
-    def test(self):
-        while(True):
-            print("Test")
-            #time.sleep(1)
-
-

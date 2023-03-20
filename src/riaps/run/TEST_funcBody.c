@@ -57,10 +57,26 @@ void* test() {
 
     sleep(1);
 
+    printf("State of GIL pre-lock: %d\n", PyGILState_Check());
+    fflush(stdout);
+
+    Py_BEGIN_ALLOW_THREADS
+    //PyEval_SaveThread();
+    PyGILState_STATE gstate = PyGILState_Ensure();
+
+    printf("State of GIL post-lock: %d\n", PyGILState_Check());
+    fflush(stdout);
+
+    /* Perform Python actions here. */
     PyObject *pObj = PyBytes_FromString("Hello world\n"); /* Object creation, ref count = 1. */
     PyObject_Print(pObj, stdout, 0);
     fflush(stdout);
     Py_DECREF(pObj);    /* ref count becomes 0, object deallocated.*/
+    /* evaluate result or handle exception */
+
+    /* Release the thread. No Python API allowed beyond this point. */
+    PyGILState_Release(gstate);
+    Py_END_ALLOW_THREADS
 
     printf("Thread %ld: Done!\n");
 
