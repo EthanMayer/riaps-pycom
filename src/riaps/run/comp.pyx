@@ -46,23 +46,74 @@ cdef void* get_sckt(const char* name, portDict):
     else:
         error("Could not retrieve socket pointer from dictionary in comp.pyx")
 
-class CythonComponentThread(threading.Thread):
+cdef class CythonComponentThread():
 
     def __init__(self, parent):
-        threading.Thread.__init__(self,daemon=False)
-        # self.name = parent.name
-        # self.parent = parent
-        # self.context = parent.context
-        # self.instance = parent.instance
-        # self.schedulerType = parent.scheduler
-        # self.control = None
+        # threading.Thread.__init__(self,daemon=False)
+        self.name = parent.name
+        self.parent = parent
+        self.context = parent.context
+        self.instance = parent.instance
+        self.schedulerType = parent.scheduler
+        self.control = None
 
-    #def setupControl():
+    cpdef setupControl(self):
+        # Setup control (zmq pair socket)
+        pass
+
+    cpdef sendControl(self, msg):
+        # send self.control as pyobj
+        pass
+
+    cpdef setupSockets(self):
         # Setup socket to connect to testPart.py
+        pass
 
-    #def setupSockets():
+    cpdef setupPoller(self):
+        # setup pollers
+        pass
+    
+    cpdef replaceSocket(self, portObj, newSocket):
+        pass
 
-    def launchThread(self):
+    cpdef addGroupSocket(self, group, groupPriority):
+        pass
+
+    cpdef delGroupSocket(self, group):
+        pass
+
+    cpdef runCommand(self):
+        pass
+
+    cpdef getInfo(self):
+        pass
+
+    cpdef logEvent(self, msg):
+        pass
+    
+    cpdef executeHandlerFor(self, socket):
+        pass
+
+    cpdef batchScheduler(self, sockets):
+        pass
+
+    cpdef rrScheduler(self, sockets):
+        pass
+
+    cpdef priorityScheduler(self, sockets):
+        pass
+
+    cpdef setupScheduler(self):
+        pass
+
+    cpdef run(self):
+        self.setupControl()
+        self.setupSockets()
+        self.setupPoller()
+        self.setupScheduler()
+        self.launchThread() # custom
+
+    cpdef launchThread(self):
         cdef pthread_t t1    # Thread 1's ID
         portDict = {}   # Dictionary for ports
 
@@ -120,23 +171,13 @@ class CythonComponentThread(threading.Thread):
             print("Cython Main Thread: Test2")
             time.sleep(1)
 
-    def run(self):
-        # self.setupControl()
-        # self.setupSockets()
-        # self.setupPoller()
-        # self.setupScheduler()
-        self.launchThread()
-
 cdef class CythonComponent(object):
     '''
     Base class for RIAPS application components
     '''
+    # Cython c variable declarations
     cdef int GROUP_PRIORITY_MAX
     cdef int GROUP_PRIORITY_MIN
-
-    #def __cinit__(self):
-    #    self.GROUP_PRIORITY_MAX = 0 # Priority 0 means highest priority
-    #    self.GROUP_PRIORITY_MIN = 256 # Priority 256 means lowest priority (>= 256 port indices are unexpected)
     
     def __init__(self):
         '''
