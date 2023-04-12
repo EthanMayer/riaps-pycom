@@ -134,7 +134,7 @@ class CythonComponent(object):
     GROUP_PRIORITY_MAX = 0  # Priority 0 means highest priority
     GROUP_PRIORITY_MIN = 256  # Priority 256 means lowest priority (>= 256 port indices are unexpected)
     
-    def __init__(self):
+    cpdef __init__(self):
         '''
         Constructor
        '''
@@ -164,25 +164,25 @@ class CythonComponent(object):
         self.coord = Coordinator(self)
         self.thread = None
  
-    def getName(self):
+    cpdef getName(self):
         '''
         Return the name of the component (as in model)
         '''
         return self.owner.getName()
     
-    def getTypeName(self):
+    cpdef getTypeName(self):
         '''
         Return the name of the type of the component (as in model) 
         '''
         return self.owner.getTypeName()
     
-    def getLocalID(self):
+    cpdef getLocalID(self):
         '''
         Return a locally unique ID (int) of the component. The ID is unique within the actor.
         '''
         return id(self)
 
-    def getActorName(self):
+    cpdef getActorName(self):
         '''
         Return the name of the parent actor (as in model)
         '''
@@ -194,37 +194,37 @@ class CythonComponent(object):
         '''
         return self.owner.getAppName()
     
-    def getActorID(self):
+    cpdef getActorID(self):
         '''
         Return a globally unique ID (8 bytes) for the parent actor. 
         '''
         return self.owner.getActorID()
     
-    def getUUID(self):
+    cpdef getUUID(self):
         '''
         Return the network unique ID for the parent actor
         '''
         return self.owner.getUUID()
     
-    def handleActivate(self):
+    cpdef handleActivate(self):
         '''
         Default activation handler
         '''
         pass
     
-    def handleDeactivate(self):
+    cpdef handleDeactivate(self):
         '''
         Default deactivation handler
         '''
         pass
     
-    def handlePassivate(self):
+    cpdef handlePassivate(self):
         '''
         Default activation handler
         '''
         pass
     
-    def handleCPULimit(self):
+    cpdef handleCPULimit(self):
         ''' 
         Default handler for CPU limit exceed
         '''
@@ -236,102 +236,102 @@ class CythonComponent(object):
         '''
         pass
     
-    def handleSpcLimit(self):
+    cpdef handleSpcLimit(self):
         ''' 
         Default handler for space limit exceed
         '''
         pass
         
-    def handleNetLimit(self):
+    cpdef handleNetLimit(self):
         ''' 
         Default handler for space limit exceed
         '''
         pass
     
-    def handleNICStateChange(self, state):
+    cpdef handleNICStateChange(self, state):
         ''' 
         Default handler for NIC state change
         '''
         pass
     
-    def handlePeerStateChange(self, state, uuid):
+    cpdef handlePeerStateChange(self, state, uuid):
         ''' 
         Default handler for peer state change
         '''
         pass
     
-    def handleDeadline(self, _funcName):
+    cpdef handleDeadline(self, _funcName):
         '''
         Default handler for deadline violation
         '''
         pass
     
-    def handleGroupMessage(self, _group):
+    cpdef handleGroupMessage(self, _group):
         '''
         Default handler for group messages.
         Implementation must immediately call recv/recv_pyobj on the group to obtain message. 
         '''
         pass
     
-    def handleVoteRequest(self, group, rfvId):
+    cpdef handleVoteRequest(self, group, rfvId):
         '''
         Default handler for vote requests (in member)
         Implementation must recv/recv_pyobj to obtain the topic. 
         '''
         pass
     
-    def handleVoteResult(self, group, rfvId, vote):
+    cpdef handleVoteResult(self, group, rfvId, vote):
         '''
         Default handler for the result of a vote (in member)
         '''
         pass
     
-    def handleActionVoteRequest(self, group, rfvId, when):
+    cpdef handleActionVoteRequest(self, group, rfvId, when):
         '''
         Default handler for request to vote an action in the future (in member)
         Implementation must recv/recv_pyobj to obtain the action topic. 
         '''
         pass
         
-    def handleMessageToLeader(self, group):
+    cpdef handleMessageToLeader(self, group):
         '''
         Default handler for messages sent to the leader (in leader)
         Leader implementation must immediately call recv/recv_pyobj on the group to obtain message. 
         '''
         pass
     
-    def handleMessageFromLeader(self, group):
+    cpdef handleMessageFromLeader(self, group):
         '''
         Default handler for messages received from the leader (in member) 
         Member implementation must immediately call recv/recv_pyobj on the group to obtain message. 
         '''
         pass
     
-    def handleMemberJoined(self, group, memberId):
+    cpdef handleMemberJoined(self, group, memberId):
         '''
         Default handler for 'member join' events
         '''  
         pass
     
-    def handleMemberLeft(self, group, memberId):
+    cpdef handleMemberLeft(self, group, memberId):
         '''
         Default handler for 'member leave' events
         '''          
         pass
     
-    def handleLeaderElected(self, group, leaderId):
+    cpdef handleLeaderElected(self, group, leaderId):
         '''
         Default handler for 'leader elected' events
         '''  
         pass
     
-    def handleLeaderExited(self, group, leaderId):
+    cpdef handleLeaderExited(self, group, leaderId):
         '''
         Default handler for 'leader exited' events
         '''  
         pass
     
-    def joinGroup(self, groupName, instName, groupPriority=GROUP_PRIORITY_MIN):
+    cpdef joinGroup(self, groupName, instName, groupPriority=GROUP_PRIORITY_MIN):
         if self.thread == None:
             self.thread = self.owner.thread
         group = self.coord.getGroup(groupName, instName)
@@ -340,7 +340,7 @@ class CythonComponent(object):
             self.thread.addGroupSocket(group, groupPriority)
         return group
             
-    def leaveGroup(self,group):
+    cpdef leaveGroup(self,group):
         assert type(group) == Group
         if self.thread == None:
             self.thread = self.owner.thread
