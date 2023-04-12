@@ -127,17 +127,23 @@ class CythonComponentThread(threading.Thread):
         # self.setupScheduler()
         self.launchThread()
 
-class CythonComponent(object):
+cdef class CythonComponent(object):
     '''
     Base class for RIAPS application components
     '''
-    GROUP_PRIORITY_MAX = 0  # Priority 0 means highest priority
-    GROUP_PRIORITY_MIN = 256  # Priority 256 means lowest priority (>= 256 port indices are unexpected)
+    cdef int GROUP_PRIORITY_MAX
+    cdef int GROUP_PRIORITY_MIN
+
+    #def __cinit__(self):
+    #    self.GROUP_PRIORITY_MAX = 0 # Priority 0 means highest priority
+    #    self.GROUP_PRIORITY_MIN = 256 # Priority 256 means lowest priority (>= 256 port indices are unexpected)
     
-    cpdef __init__(self):
+    def __init__(self):
         '''
         Constructor
        '''
+        self.GROUP_PRIORITY_MAX = 0 # Priority 0 means highest priority
+        self.GROUP_PRIORITY_MIN = 256 # Priority 256 means lowest priority (>= 256 port indices are unexpected)
         class_ = getattr(self, '__class__')
         className = getattr(class_, '__name__')
         self.owner = class_.OWNER  # This is set in the parent part (temporarily)
@@ -188,7 +194,7 @@ class CythonComponent(object):
         '''
         return self.owner.getActorName()
     
-    def getAppName(self):
+    cpdef getAppName(self):
         '''
         Return the name of the parent application (as in model)
         '''
@@ -230,7 +236,7 @@ class CythonComponent(object):
         '''
         pass
     
-    def handleMemLimit(self):
+    cpdef handleMemLimit(self):
         ''' 
         Default handler for memory limit exceed
         '''
@@ -331,7 +337,9 @@ class CythonComponent(object):
         '''  
         pass
     
-    cpdef joinGroup(self, groupName, instName, groupPriority=GROUP_PRIORITY_MIN):
+    cpdef joinGroup(self, groupName, instName, groupPriority):
+        if groupPriority == None: # TODO: check if this is a valid replacement for default value from parameter list
+            groupPriority = self.GROUP_PRIORITY_MIN
         if self.thread == None:
             self.thread = self.owner.thread
         group = self.coord.getGroup(groupName, instName)
