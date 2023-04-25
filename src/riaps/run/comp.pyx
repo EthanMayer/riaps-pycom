@@ -19,11 +19,14 @@ from pthread cimport pthread_create, pthread_join, pthread_t
 # Import Python libraries
 import threading
 import time
+import zmq
+import traceback
 
 # Import Riaps Libraries
 from riaps.utils import spdlog_setup
 import spdlog
 from riaps.run.dc import Coordinator,Group
+from riaps.run.exc import BuildError
 
 # Error handling
 cpdef error(msg):
@@ -47,9 +50,13 @@ cdef void* get_sckt(const char* name, portDict):
         error("Could not retrieve socket pointer from dictionary in comp.pyx")
 
 cdef class CythonComponentThread():
+    '''
+    Cython Component execution thread. Runs the component's code, and communicates with the parent actor.
+    '''
 
     def __init__(self, parent):
         # threading.Thread.__init__(self,daemon=False)
+        # self.logger = logging.getLogger(__name__)
         self.name = parent.name
         self.parent = parent
         self.context = parent.context
@@ -58,41 +65,204 @@ cdef class CythonComponentThread():
         self.control = None
 
     cpdef setupControl(self):
-        # Setup control (zmq pair socket)
+        '''
+        Create the control socket and connect it to the socket in the parent part
+        '''
+        self.control = self.context.socket(zmq.PAIR)
+        self.control.connect('inproc://part_' + self.name + '_control')
         pass
 
     cpdef sendControl(self, msg):
-        # send self.control as pyobj
-        pass
+        assert self.control != None
+        self.control.send_pyobj(msg)
 
     cpdef setupSockets(self):
-        # Setup socket to connect to testPart.py
-        pass
+        msg = self.control.recv_pyobj()
+        if msg != "build":
+            raise BuildError('setupSockets: invalid msg: %s' % str(msg)) 
+        for portName in self.parent.ports:
+            res = self.parent.ports[portName].setupSocket(self)
+            portKind = res.portKind
+            if portKind in {'tim','ins'}:
+                continue
+            elif portKind in {'pub', 'sub', \
+                              'clt', 'srv', \
+                              'req', 'rep', \
+                              'qry', 'ans'}:
+                self.control.send_pyobj(res)
+            else:
+                raise BuildError('setupSockets: invalid portKind: %s' % str(portKind))
+        self.control.send_pyobj("done")
 
     cpdef setupPoller(self):
-        # setup pollers
-        pass
+        self.poller = zmq.Poller()
+        self.sock2NameMap = {}
+        self.sock2PortMap = {}
+        self.sock2GroupMap = {}
+        self.portName2GroupMap = {}
+        self.poller.register(self.control, zmq.POLLIN)
+        self.sock2NameMap[self.control] = ""
+        self.sock2PrioMap = {}
+        for portName in self.parent.ports:
+            portObj = self.parent.ports[portName]
+            portSocket = portObj.getSocket()
+            portIsInput = portObj.inSocket()
+            if portSocket != None:
+                self.sock2PortMap[portSocket] = portObj
+                if portIsInput:
+                    self.poller.register(portSocket, zmq.POLLIN)
+                    self.sock2NameMap[portSocket] = portName
+                    self.sock2PrioMap[portSocket] = portObj.getIndex()
     
     cpdef replaceSocket(self, portObj, newSocket):
-        pass
+        portName = portObj.name
+        oldSocket = portObj.getSocket() 
+        del self.sock2PortMap[oldSocket]
+        if portObj.inSocket():
+            self.poller.register(oldSocket, 0)
+            del self.sock2NameMap[oldSocket]
+            del self.sock2PrioMap[oldSocket]
+        oldSocket.close()
+        self.sock2PortMap[newSocket] = portObj
+        if portObj.inSocket():
+            self.poller.register(newSocket, zmq.POLLIN)
+            self.sock2NameMap[newSocket] = portName
+            self.sock2PrioMap[newSocket] = portObj.getIndex()
 
     cpdef addGroupSocket(self, group, groupPriority):
-        pass
+        groupSocket = group.getSocket()
+        groupId = group.getGroupName()
+        self.poller.register(groupSocket, zmq.POLLIN)
+        self.sock2GroupMap[groupSocket] = group
+        self.portName2GroupMap[groupId] = group
+        self.sock2PrioMap[groupSocket] = groupPriority
 
     cpdef delGroupSocket(self, group):
-        pass
+        groupSocket = group.getSocket()
+        groupId = group.getGroupName()
+        self.poller.unregister(groupSocket)
+        del self.sock2GroupMap[groupSocket]
+        del self.portName2GroupMap[groupId]
+        del self.sock2PrioMap[groupSocket]
 
     cpdef runCommand(self):
-        pass
+        res = False
+        msg = self.control.recv_pyobj()
+        if msg == "kill":
+            self.logger.info("kill")
+            res = True
+        elif msg == "activate":
+            self.logger.info("activate")
+            for portName in self.parent.ports:
+                self.parent.ports[portName].activate()
+            self.instance.handleActivate()  
+        elif msg == "deactivate":
+            self.logger.info("deactivate")
+            self.instance.handleDeactivate()   
+            for portName in self.parent.ports:
+                self.parent.ports[portName].deactivate()
+        elif msg == "passivate":
+            self.logger.info("passivate")
+            self.instance.handlePassivate()                
+        else: 
+            cmd = msg[0]
+            if cmd == "portUpdate":
+                self.logger.info("portUpdate: %s" % str(msg))
+                (_ignore, portName, host, port) = msg
+                ports = self.parent.ports
+                groups = self.portName2GroupMap
+                if portName in ports:
+                    portObj = ports[portName]
+                    res = portObj.update(host, port)
+                elif portName in groups:
+                    groupObj = groups[portName]
+                    res = groupObj.update(host, port)
+                else:
+                    pass
+                # self.control.send_pyobj("ok")
+            elif cmd == "groupUpdate":
+                # handle it in coordinator
+                pass
+            elif cmd == "limitCPU":
+                self.logger.info("limitCPU")
+                self.instance.handleCPULimit()
+                # self.control.send_pyobj("ok")
+            elif cmd == "limitMem":
+                self.logger.info("limitMem")
+                self.instance.handleMemLimit()
+                # self.control.send_pyobj("ok")
+            elif cmd == "limitSpc":
+                self.logger.info("limitSpc")
+                self.instance.handleSpcLimit()
+                # self.control.send_pyobj("ok")
+            elif cmd == "limitNet":
+                self.logger.info("limitNet")
+                self.instance.handleNetLimit()
+                # self.control.send_pyobj("ok")
+            elif cmd == "nicState":
+                state = msg[1]
+                self.logger.info("nicState %s" % state)
+                self.instance.handleNICStateChange(state)
+                # self.control.send_pyobj("ok")
+            elif cmd == "peerState":
+                state, uuid = msg[1], msg[2]
+                self.logger.info("peerState %s at %s" % (state, uuid))
+                self.instance.handlePeerStateChange(state, uuid)
+                # self.control.send_pyobj("ok")
+            else:
+                self.logger.info("unknown command %s" % cmd)
+                pass  # Should report an error
+        return res
 
     cpdef getInfo(self):
-        pass
+        info = []
+        for (_portName, portObj) in self.parent.ports:
+            res = portObj.getInfo()
+            info.append(res)
+        return info
 
     cpdef logEvent(self, msg):
-        pass
+        self.control.send_pyobj(msg)
     
     cpdef executeHandlerFor(self, socket):
-        pass
+        '''
+        Execute the handler for the socket
+        
+        The handler is always allowed to run to completion, the operation is never preempted. 
+        '''
+        if socket in self.sock2PortMap:
+            portName = self.sock2NameMap[socket]
+            portObj = self.sock2PortMap[socket]
+            deadline = portObj.getDeadline()
+            try:
+                funcName = 'on_' + portName
+                func_ = getattr(self.instance, funcName)
+                if deadline != 0:
+                    start = time.perf_counter()
+                func_()
+                if deadline != 0:
+                    finish = time.perf_counter()
+                    spent = finish - start
+                    if spent > deadline:
+                        self.logger.error('Deadline violation in %s.%s()' 
+                                          % (self.name, funcName))
+                        msg = ('deadline',)
+                        self.control.send_pyobj(msg)
+                        self.instance.handleDeadline(funcName)
+            except:
+                traceback.print_exc()
+                msg = ('exception', traceback.format_exc())
+                self.control.send_pyobj(msg)
+        elif socket in self.sock2GroupMap:
+            group = self.sock2GroupMap[socket]
+            try:
+                group.handleMessage()
+            except:
+                traceback.print_exc()
+                msg = ('exception', traceback.format_exc())
+                self.control.send_pyobj(msg)
+        else:
+            self.logger.error('Unbound port')
 
     cpdef batchScheduler(self, sockets):
         pass
@@ -173,7 +343,7 @@ cdef class CythonComponentThread():
 
 cdef class CythonComponent(object):
     '''
-    Base class for RIAPS application components
+    Base class for RIAPS Cython application components
     '''
     # Cython c variable declarations
     cdef int GROUP_PRIORITY_MAX
