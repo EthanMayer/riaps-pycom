@@ -58,6 +58,21 @@ cdef class CythonComponentThread():
     Cython Component execution thread. Runs the component's code, and communicates with the parent actor.
     '''
 
+    # Class attribute initialization
+    logger = None
+    name = None
+    parent = None
+    context = None
+    instance = None
+    schedulerType = None
+    control = None
+    #cdef char* name
+    #cdef void* parent
+    #cdef void* context
+    #cdef void* instance
+    #cdef void* schedulerType
+    #cdef void* control
+
     def __init__(self, parent):
         # threading.Thread.__init__(self,daemon=False)
         self.logger = logging.getLogger(__name__)
@@ -469,7 +484,13 @@ cdef class CythonComponent(object):
     # Cython c variable declarations
     cdef int GROUP_PRIORITY_MAX
     cdef int GROUP_PRIORITY_MIN
-    
+
+    # Class attribute initialization
+    owner = None
+    logger = None
+    coord = None
+    #thread = None
+
     def __init__(self):
         '''
         Constructor
@@ -500,7 +521,7 @@ cdef class CythonComponent(object):
             self.logger.set_pattern(spdlog_setup.global_pattern)
         # print  ( "Component() : '%s'" % self )
         self.coord = Coordinator(self)
-        self.thread = None
+        #self.thread = None
  
     cpdef getName(self):
         '''
