@@ -20,7 +20,11 @@ from pthread cimport pthread_create, pthread_join, pthread_t
 import threading
 import time
 import zmq
+import logging
 import traceback
+import heapq
+import itertools
+from collections import deque
 
 # Import Riaps Libraries
 from riaps.utils import spdlog_setup
@@ -56,7 +60,7 @@ cdef class CythonComponentThread():
 
     def __init__(self, parent):
         # threading.Thread.__init__(self,daemon=False)
-        # self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(__name__)
         self.name = parent.name
         self.parent = parent
         self.context = parent.context
@@ -265,22 +269,139 @@ cdef class CythonComponentThread():
             self.logger.error('Unbound port')
 
     cpdef batchScheduler(self, sockets):
-        pass
+        '''
+        Batch scheduler for the component message processing.
+        
+        The dictionary containing the active sockets is scanned and the associated handler is invoked. 
+        
+        '''
+        for socket in sockets:
+            self.executeHandlerFor(socket)
 
     cpdef rrScheduler(self, sockets):
-        pass
+        '''
+        Round-robin scheduler for the component message processing. 
+        
+        The round-robin order is determined by the order of component ports. The dictionary of active sockets is scanned, and the \
+        associated handlers are invoked in round-robin order. After each invocation, the inputs are polled (in a no-wait operation) \
+        and the round-robin queue is updated. 
+        '''
+        while True:
+            jobs = []
+            for socket in sockets:
+                if socket in self.sock2PortMap:
+                    tag = self.sock2PrioMap[socket]
+                elif socket in self.sock2GroupMap:
+                    tag = self.sock2PrioMap[socket]  # TODO: better solution for group message priority  
+                jobs += [(tag, socket)]
+            jobs = sorted(jobs)  # Sort jobs by tag
+            if len(jobs) != 1:  # More than one job
+                if len(self.dq):  # If deque is not empty
+                    # Find jobs whose tag is larger than the last executed tag 
+                    larger = [ i for i, job in enumerate(jobs) if job[0] > self.last]
+                    if len(larger):  # There is at least one such job
+                        first = larger[0]  # Shuffle job list to keep rr- order
+                        jobs = jobs[-first:] + jobs[0:first]
+                else:
+                    self.last = jobs[-1][0]  # Tag of last job to be added to deque
+            self.dq.extendleft(jobs)  # Add jobs to deque   
+            sockets = {}
+            while True:
+                try:
+                    tag, socket = self.dq.pop()
+                    self.last = self.dq[0][0] if len(self.dq) > 0 else tag
+                    self.executeHandlerFor(socket)
+                    if len(self.dq) == 0: return  # Empty queue, return               
+                    sockets = dict(self.poller.poll(None))  # Check if something came in
+                    if sockets:
+                        if self.control in sockets:  # Handle control message
+                            self.toStop = self.runCommand()
+                            del sockets[self.control]
+                            if self.toStop: return  # Return if we must stop
+                            if len(sockets):  # More sockets to handle
+                                break  #  break from inner loop to schedule tasks
+                    else:  # Nothing came in
+                        continue  #  keep running inner loop
+                except IndexError:  # Queue empty, return
+                    print('indexError')
+                    return
 
     cpdef priorityScheduler(self, sockets):
-        pass
+        '''
+        priority scheduler for the component message processing. 
+        
+        The priority order is determined by the order of component ports. The dictionary of active sockets is scanned, and the \
+        they are inserted into a priority queue (according to their priority value). The queue is processed (in order of \
+        priority). After each invocation, the inputs are polled (in a no-wait operation) and the priority queue is updated. 
+        '''
+        while True:
+            for socket in sockets:
+                if socket in self.sock2PortMap:
+                    pri = self.sock2PrioMap[socket]
+                elif socket in self.sock2GroupMap:
+                    pri = self.sock2PrioMap[socket]  # TODO: better solution for group message priority  
+                cnt = next(self.tc)
+                entry = (pri, cnt, socket)
+                heapq.heappush(self.pq, entry)
+            sockets = {}
+            while True:
+                try:
+                    pri, cnt, socket = heapq.heappop(self.pq)  # Execute one task
+                    self.executeHandlerFor(socket)
+                    if len(self.pq) == 0:  # Empty queue, return
+                        return
+                    sockets = dict(self.poller.poll(None))  # Poll to check if something came in
+                    if sockets:
+                        if self.control in sockets:  # Handle control message
+                            self.toStop = self.runCommand()
+                            del sockets[self.control]
+                            if self.toStop: return  # Return if we must stop
+                        if len(sockets):  # More sockets to handle,
+                            break  #  break from inner loop to schedule tasks
+                    else:  # Nothing came in
+                        continue  #  keep running inner loop
+                except IndexError:  # Queue empty, return
+                    return
 
     cpdef setupScheduler(self):
-        pass
+        '''
+        Select the message scheduler algorithm based on the model. 
+        '''
+        if self.schedulerType == 'default':
+            self.scheduler = self.batchScheduler
+        elif self.schedulerType == 'priority':
+            self.scheduler = self.priorityScheduler
+            self.pq = []
+            self.tc = itertools.count()
+        elif self.schedulerType == 'rr':
+            self.scheduler = self.rrScheduler
+            self.dq = deque()
+            self.last = -1
+        else:
+            self.logger.error('Unknown scheduler type: %r' % self.schedulerType)
+            self.scheduler = None
 
     cpdef run(self):
         self.setupControl()
         self.setupSockets()
         self.setupPoller()
         self.setupScheduler()
+        if self.scheduler:
+            self.toStop = False
+            while True:
+                sockets = dict(self.poller.poll())
+                if self.control in sockets:
+                    self.toStop = self.runCommand()
+                    del sockets[self.control]
+                if self.toStop: break
+                if len(sockets) > 0: self.scheduler(sockets)
+                if self.toStop: break
+        self.logger.info("stopping")
+        if hasattr(self.instance, '__destroy__'):
+            destroy_ = getattr(self.instance, '__destroy__')
+            destroy_()
+        self.logger.info("stopped")
+        
         self.launchThread() # custom
 
     cpdef launchThread(self):
