@@ -10,10 +10,10 @@ from libc.stdlib cimport malloc, free, atoi
 from posix.dlfcn cimport dlopen, dlsym, RTLD_LAZY
 from libc.string cimport strerror
 from libc.errno cimport errno
-from libc.stdio cimport sprintf
+from libc.stdio cimport sprintf, printf, fflush, stdout
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_IsValid, PyCapsule_GetPointer, PyCapsule_GetName
 from zmq.backend.cython cimport libzmq as z
-# Import project's pthread .pxd header file
+# Import my pthread .pxd header file
 from pthread cimport pthread_create, pthread_join, pthread_t
 
 # Import Python libraries
@@ -101,15 +101,20 @@ cdef class CythonComponentThread():
 
         
 
-        cdef char buf[6]
+        cdef void* buf[256]
         if (z.zmq_recvbuf(self.sckt, buf, sizeof(buf), 0) == -1):
             print("Cython: error receiving!") #error("Could not receive on comp.pyx PAIR socket")
         #print("Cython: received " + str(buf))
-
+        #printf("Cython: message - %s\n", <char*>buf)
+        fflush(stdout)
+        print("Cython: received build")
         
         #msg = self.control.recv()
         #print("Received build")
-        msg = bytes(buf).decode("utf-8")
+        #msg = bytes(buf).decode("utf-8")
+        
+        msg = <str><void*>buf
+        print(msg)
         if msg != "build":
             raise BuildError('setupSockets: invalid msg: %s' % str(msg)) 
         for portName in self.parent.ports:

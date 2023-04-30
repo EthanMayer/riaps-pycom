@@ -39,13 +39,21 @@ void* test(void* context) {
     // Send the Ready message to main thread
     char* buf = "build";
     fflush(stdout);
-    PyObject* obj = Py_BuildValue("s", buf);
+    Py_BEGIN_ALLOW_THREADS
+    gstate = PyGILState_Ensure();
+    PyObject* obj = Py_BuildValue("s", buf); 
+    PyObject* objRepr = PyObject_Repr(obj);
+    char* objStr = PyUnicode_AsUTF8(objRepr);
+    printf("Thread %ld: Object - %s\n", thread, objStr);
     printf("Thread %ld: Sending 'build' signal\n", thread);
     fflush(stdout);
     if (zmq_send(sckt, buf, sizeof(buf), 0) != sizeof(buf)) {
         error("Pair send buffer length incorrect\n");
     }
-
+    Py_DECREF(objRepr);
+    Py_DECREF(obj);
+    PyGILState_Release(gstate);
+    Py_END_ALLOW_THREADS
     sleep(1);
 
     // Receive build message from main thread
