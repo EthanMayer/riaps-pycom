@@ -66,6 +66,8 @@ cdef class CythonComponentThread():
     cdef object instance
     cdef object schedulerType
     cdef object control
+    cdef void* ctx
+    cdef void* sckt
 
     def __init__(self, parent):
         # threading.Thread.__init__(self,daemon=False)
@@ -76,13 +78,18 @@ cdef class CythonComponentThread():
         self.instance = parent.instance
         self.schedulerType = parent.scheduler
         self.control = None
+        # Create main thread pair socket and bind to IP
+        self.ctx = z.zmq_ctx_new()
 
     cpdef setupControl(self):
         '''
         Create the control socket and connect it to the socket in the parent part
         '''
-        self.control = self.context.socket(zmq.PAIR)
+        #self.control = self.context.socket(zmq.PAIR)
         #self.control.connect('inproc://part_' + self.name + '_control')
+        self.sckt = z.zmq_socket(self.ctx, z.ZMQ_PAIR)
+        if (z.zmq_bind(self.sckt, "inproc://part_Test_Part_control") != 0):
+            print("Cython: error binding!") #error("Could not bind comp.pyx PAIR socket address")
         pass
 
     cpdef sendControl(self, msg):
@@ -91,22 +98,18 @@ cdef class CythonComponentThread():
 
     cpdef setupSockets(self):
         print("Cython: Awaiting build")
-        # Create main thread pair socket and bind to IP
-        cdef void* ctx = z.zmq_ctx_new()
-        cdef void* sckt = z.zmq_socket(ctx, z.ZMQ_PAIR)
 
-        if (z.zmq_bind(sckt, "tcp://part_Test_Part_control:11111") != 0):
-            pass #error("Could not bind comp.pyx PAIR socket address")
+        
 
         cdef char buf[6]
-        z.zmq_recvbuf(sckt, buf, sizeof(buf), 0)
-            #pass #error("Could not receive on comp.pyx PAIR socket")
+        if (z.zmq_recvbuf(self.sckt, buf, sizeof(buf), 0) == -1):
+            print("Cython: error receiving!") #error("Could not receive on comp.pyx PAIR socket")
         #print("Cython: received " + str(buf))
 
         
         #msg = self.control.recv()
-        print("Received build")
-        msg = "Not build"
+        #print("Received build")
+        msg = bytes(buf).decode("utf-8")
         if msg != "build":
             raise BuildError('setupSockets: invalid msg: %s' % str(msg)) 
         for portName in self.parent.ports:
@@ -456,7 +459,7 @@ cdef class CythonComponentThread():
         # Create thread with the .so function as body
         cdef void *thread1 = dlsym(libhandle, "test")
 
-        if (pthread_create(&t1, NULL, thread1, NULL) == -1):
+        if (pthread_create(&t1, NULL, thread1, self.ctx) == -1):
             error("Could not create thread in comp.pyx")
 
         # Receive "Ready" message to know the thread is ready

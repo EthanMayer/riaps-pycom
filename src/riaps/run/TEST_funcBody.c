@@ -22,7 +22,7 @@ void error(char* msg) {
 }
 
 // Function to be run on a thread to send back data
-void* test() {
+void* test(void* context) {
     PyGILState_STATE gstate;
     // Debug identify self
     long thread = pthread_self();
@@ -30,9 +30,9 @@ void* test() {
     fflush(stdout);
 
     // Create thread1 receiver pair socket and connect to main's sender pair
-    void *context = zmq_ctx_new();
+    //void *context = zmq_ctx_new();
     void *sckt = zmq_socket(context, ZMQ_PAIR);
-    if (zmq_connect(sckt, "tcp://part_Test_Part_control:11111") != 0) {
+    if (zmq_connect(sckt, "inproc://part_Test_Part_control") != 0) {
         error("Could not connect to main socket\n");
     }
     sleep(2);
