@@ -58,20 +58,14 @@ cdef class CythonComponentThread():
     Cython Component execution thread. Runs the component's code, and communicates with the parent actor.
     '''
 
-    # Class attribute initialization
-    logger = None
-    name = None
-    parent = None
-    context = None
-    instance = None
-    schedulerType = None
-    control = None
-    #cdef char* name
-    #cdef void* parent
-    #cdef void* context
-    #cdef void* instance
-    #cdef void* schedulerType
-    #cdef void* control
+    # All cython class attributes must be declared at compile time
+    cdef object logger
+    cdef str name
+    cdef object parent
+    cdef object context
+    cdef object instance
+    cdef object schedulerType
+    cdef object control
 
     def __init__(self, parent):
         # threading.Thread.__init__(self,daemon=False)
@@ -88,7 +82,7 @@ cdef class CythonComponentThread():
         Create the control socket and connect it to the socket in the parent part
         '''
         self.control = self.context.socket(zmq.PAIR)
-        self.control.connect('inproc://part_' + self.name + '_control')
+        #self.control.connect('inproc://part_' + self.name + '_control')
         pass
 
     cpdef sendControl(self, msg):
@@ -96,7 +90,23 @@ cdef class CythonComponentThread():
         self.control.send_pyobj(msg)
 
     cpdef setupSockets(self):
-        msg = self.control.recv_pyobj()
+        print("Cython: Awaiting build")
+        # Create main thread pair socket and bind to IP
+        cdef void* ctx = z.zmq_ctx_new()
+        cdef void* sckt = z.zmq_socket(ctx, z.ZMQ_PAIR)
+
+        if (z.zmq_bind(sckt, "tcp://part_Test_Part_control:11111") != 0):
+            pass #error("Could not bind comp.pyx PAIR socket address")
+
+        cdef char buf[6]
+        z.zmq_recvbuf(sckt, buf, sizeof(buf), 0)
+            #pass #error("Could not receive on comp.pyx PAIR socket")
+        #print("Cython: received " + str(buf))
+
+        
+        #msg = self.control.recv()
+        print("Received build")
+        msg = "Not build"
         if msg != "build":
             raise BuildError('setupSockets: invalid msg: %s' % str(msg)) 
         for portName in self.parent.ports:
@@ -396,42 +406,45 @@ cdef class CythonComponentThread():
             self.logger.error('Unknown scheduler type: %r' % self.schedulerType)
             self.scheduler = None
 
-    cpdef run(self):
+    # Renamed from run -> start since this class is no longer a Thread object
+    cpdef start(self):
+        self.launchThread()
         self.setupControl()
         self.setupSockets()
         self.setupPoller()
         self.setupScheduler()
         if self.scheduler:
             self.toStop = False
-            while True:
-                sockets = dict(self.poller.poll())
-                if self.control in sockets:
-                    self.toStop = self.runCommand()
-                    del sockets[self.control]
-                if self.toStop: break
-                if len(sockets) > 0: self.scheduler(sockets)
-                if self.toStop: break
+            
+            #while True:
+            #    sockets = dict(self.poller.poll())
+            #    if self.control in sockets:
+            #        self.toStop = self.runCommand()
+            #        del sockets[self.control]
+            #    if self.toStop: break
+            #    if len(sockets) > 0: self.scheduler(sockets)
+            #    if self.toStop: break
         self.logger.info("stopping")
         if hasattr(self.instance, '__destroy__'):
             destroy_ = getattr(self.instance, '__destroy__')
             destroy_()
         self.logger.info("stopped")
         
-        self.launchThread() # custom
+        #self.launchThread() # custom
 
     cpdef launchThread(self):
         cdef pthread_t t1    # Thread 1's ID
-        portDict = {}   # Dictionary for ports
+        #portDict = {}   # Dictionary for ports
 
         # Create main thread pair socket and bind to IP
-        cdef void* ctx = z.zmq_ctx_new()
-        cdef void* sckt = z.zmq_socket(ctx, z.ZMQ_PAIR)
+        #cdef void* ctx = z.zmq_ctx_new()
+        #cdef void* sckt = z.zmq_socket(ctx, z.ZMQ_PAIR)
 
-        if (z.zmq_bind(sckt, "tcp://127.0.0.1:5556") != 0):
-            error("Could not bind comp.pyx PAIR socket address")
+        #if (z.zmq_bind(sckt, "tcp://127.0.0.1:5556") != 0):
+        #    error("Could not bind comp.pyx PAIR socket address")
 
         # Store socket in dictionary
-        store_sckt("Thread1", sckt, portDict)
+        #store_sckt("Thread1", sckt, portDict)
 
         # Open .so shared library and grab function from it
         cdef char* libpath = "TEST_funcBody.so";
@@ -447,49 +460,47 @@ cdef class CythonComponentThread():
             error("Could not create thread in comp.pyx")
 
         # Receive "Ready" message to know the thread is ready
-        cdef char buf[6]
-        if (z.zmq_recvbuf(get_sckt("Thread1", portDict), buf, sizeof(buf), 0) == -1):
-            error("Could not receive on comp.pyx PAIR socket")
-        print("Cython: received " + str(buf))
+        #cdef char buf[6]
+        #if (z.zmq_recvbuf(get_sckt("Thread1", portDict), buf, sizeof(buf), 0) == -1):
+        #    error("Could not receive on comp.pyx PAIR socket")
+        #print("Cython: received " + str(buf))
 
         # Send build message to thread
-        cdef char* message = 'Build'
-        if (z.zmq_sendbuf(get_sckt("Thread1", portDict), message, sizeof(message), 0) != sizeof(message)):
-            error("Comp.pyx PAIR send build message length incorrect")
-        print("Cython: Sent message: " + str(message))
+        #cdef char* message = 'Build'
+        #if (z.zmq_sendbuf(get_sckt("Thread1", portDict), message, sizeof(message), 0) != sizeof(message)):
+        #    error("Comp.pyx PAIR send build message length incorrect")
+        #print("Cython: Sent message: " + str(message))
 
         # Clean up socket
-        if (z.zmq_close(get_sckt("Thread1", portDict)) == -1):
-            error("Could not close comp.pyx PAIR socket")
-        if (z.zmq_ctx_destroy(ctx) == -1):
-            error("Could not destroy comp.pyx ZMQ context")
+        #if (z.zmq_close(get_sckt("Thread1", portDict)) == -1):
+        #    error("Could not close comp.pyx PAIR socket")
+        #if (z.zmq_ctx_destroy(ctx) == -1):
+        #    error("Could not destroy comp.pyx ZMQ context")
 
-        for i in range(5):
-            print("Cython Main Thread: Test")
-            time.sleep(1)
+        #for i in range(5):
+        #    print("Cython Main Thread: Test")
+        #    time.sleep(1)
 
         # Join thread
-        print("Cython: Joining thread")
-        if (pthread_join(t1, NULL) == -1):
-            error("Could not join thread1 in comp.pyx")
+        #print("Cython: Joining thread")
+        #if (pthread_join(t1, NULL) == -1):
+        #    error("Could not join thread1 in comp.pyx")
 
-        for i in range(5):
-            print("Cython Main Thread: Test2")
-            time.sleep(1)
+        #for i in range(5):
+        #    print("Cython Main Thread: Test2")
+        #    time.sleep(1)
 
 cdef class CythonComponent(object):
     '''
     Base class for RIAPS Cython application components
     '''
-    # Cython c variable declarations
+    # All cython class attributes must be declared at compile time
     cdef int GROUP_PRIORITY_MAX
     cdef int GROUP_PRIORITY_MIN
-
-    # Class attribute initialization
-    owner = None
-    logger = None
-    coord = None
-    #thread = None
+    cdef object owner
+    cdef object logger
+    cdef object coord
+    #cdef object thread
 
     def __init__(self):
         '''
@@ -514,7 +525,7 @@ cdef class CythonComponent(object):
         # self.loghandler.setFormatter(self.logformatter)
         # self.logger.addHandler(self.loghandler)
         #
-        loggerName = self.owner.getActorName() + '.' + self.owner.getName()
+        loggerName = "TestLogger" #self.owner.getActorName() + '.' + self.owner.getName()
         self.logger = spdlog_setup.get_logger(loggerName)
         if self.logger == None:
             self.logger = spdlog.ConsoleLogger(loggerName, True, True, False)

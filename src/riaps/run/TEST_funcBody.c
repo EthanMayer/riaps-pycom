@@ -32,13 +32,15 @@ void* test() {
     // Create thread1 receiver pair socket and connect to main's sender pair
     void *context = zmq_ctx_new();
     void *sckt = zmq_socket(context, ZMQ_PAIR);
-    if (zmq_connect(sckt, "tcp://127.0.0.1:5556") != 0) {
+    if (zmq_connect(sckt, "tcp://part_Test_Part_control:11111") != 0) {
         error("Could not connect to main socket\n");
     }
-    
+    sleep(2);
     // Send the Ready message to main thread
-    char* buf = "Ready";
-    printf("Thread %ld: Sending 'Ready' signal\n", thread);
+    char* buf = "build";
+    fflush(stdout);
+    PyObject* obj = Py_BuildValue("s", buf);
+    printf("Thread %ld: Sending 'build' signal\n", thread);
     fflush(stdout);
     if (zmq_send(sckt, buf, sizeof(buf), 0) != sizeof(buf)) {
         error("Pair send buffer length incorrect\n");

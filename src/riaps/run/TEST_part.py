@@ -16,13 +16,13 @@ class Part(object):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.thread = None
-        self.name = "t"
+        self.name = "Test_Part"
         self.parent = None
         self.context = zmq.Context()
         self.instance = None
         self.schedulerType = None
         self.scheduler = None
-        
+
         self.control = self.context.socket(zmq.PAIR)
         self.control.bind('inproc://part_' + self.name + '_control')
 
