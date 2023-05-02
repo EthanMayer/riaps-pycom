@@ -704,7 +704,7 @@ cdef class CythonComponent(object):
         '''  
         pass
     
-    cpdef joinGroup(self, groupName, instName, groupPriority):
+    cpdef object joinGroup(self, groupName, instName, groupPriority):
         if groupPriority == None:
             groupPriority = self.GROUP_PRIORITY_MIN
         if self.thread == None:
@@ -715,7 +715,7 @@ cdef class CythonComponent(object):
             self.thread.addGroupSocket(group, groupPriority)
         return group
             
-    cpdef leaveGroup(self,group):
+    cpdef object leaveGroup(self,group):
         assert type(group) == Group
         if self.thread == None:
             self.thread = self.owner.thread
