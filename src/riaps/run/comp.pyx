@@ -10,7 +10,7 @@ from libc.stdlib cimport malloc, free, atoi
 from posix.dlfcn cimport dlopen, dlsym, RTLD_LAZY
 from libc.string cimport strerror
 from libc.errno cimport errno
-from libc.stdio cimport sprintf, printf, fflush, stdout
+from libc.stdio cimport sprintf, printf#, fflush, stdout
 from cpython.pycapsule cimport PyCapsule_New, PyCapsule_IsValid, PyCapsule_GetPointer, PyCapsule_GetName
 from zmq.backend.cython cimport libzmq as z
 # Import my pthread .pxd header file
@@ -85,36 +85,30 @@ cdef class CythonComponentThread():
         '''
         Create the control socket and connect it to the socket in the parent part
         '''
-        #self.control = self.context.socket(zmq.PAIR)
+        self.control = self.context.socket(zmq.PAIR)
         #self.control.connect('inproc://part_' + self.name + '_control')
-        self.sckt = z.zmq_socket(self.ctx, z.ZMQ_PAIR)
-        if (z.zmq_bind(self.sckt, "inproc://part_Test_Part_control") != 0):
-            print("Cython: error binding!") #error("Could not bind comp.pyx PAIR socket address")
-        pass
+        self.control.connect("tcp://127.0.0.1:11111")
+        #self.sckt = z.zmq_socket(self.ctx, z.ZMQ_PAIR)
+        #if (z.zmq_bind(self.sckt, "inproc://part_Test_Part_control") != 0):
+        #    print("Cython: error binding!") #error("Could not bind comp.pyx PAIR socket address")
 
     cpdef sendControl(self, msg):
         assert self.control != None
         self.control.send_pyobj(msg)
 
     cpdef setupSockets(self):
-        print("Cython: Awaiting build")
-
-        
-
-        cdef void* buf[256]
-        if (z.zmq_recvbuf(self.sckt, buf, sizeof(buf), 0) == -1):
-            print("Cython: error receiving!") #error("Could not receive on comp.pyx PAIR socket")
+        cdef char buf[6]
+        #if (z.zmq_recvbuf(self.sckt, buf, sizeof(buf), 0) == -1):
+        #    print("Cython: error receiving build message") #error("Could not receive on comp.pyx PAIR socket")
         #print("Cython: received " + str(buf))
         #printf("Cython: message - %s\n", <char*>buf)
-        fflush(stdout)
-        print("Cython: received build")
-        
-        #msg = self.control.recv()
+        #fflush(stdout)
+        #print("Cython: received build")
+        msg = self.control.recv()
         #print("Received build")
-        #msg = bytes(buf).decode("utf-8")
-        
-        msg = <str><void*>buf
-        print(msg)
+        msg = bytes(buf).decode("utf-8")
+        #msg = <str><void*>buf
+        print("Cython: received message: " + msg)
         if msg != "build":
             raise BuildError('setupSockets: invalid msg: %s' % str(msg)) 
         for portName in self.parent.ports:
