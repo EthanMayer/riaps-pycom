@@ -502,7 +502,8 @@ cdef class CythonComponent(object):
     cdef object owner
     cdef object logger
     cdef object coord
-    #cdef object thread
+    cdef dict __dict__ # catch-all for dynamic attributes assigned at runtime
+    cdef object thread
 
     def __init__(self):
         '''
@@ -510,8 +511,8 @@ cdef class CythonComponent(object):
        '''
         self.GROUP_PRIORITY_MAX = 0 # Priority 0 means highest priority
         self.GROUP_PRIORITY_MIN = 256 # Priority 256 means lowest priority (>= 256 port indices are unexpected)
-        class_ = getattr(self, '__class__')
-        className = getattr(class_, '__name__')
+        cdef type class_ = getattr(self, '__class__')
+        cdef str className = getattr(class_, '__name__')
         self.owner = class_.OWNER  # This is set in the parent part (temporarily)
         #
         # Logger attributes
@@ -527,14 +528,14 @@ cdef class CythonComponent(object):
         # self.loghandler.setFormatter(self.logformatter)
         # self.logger.addHandler(self.loghandler)
         #
-        loggerName = "TestLogger" #self.owner.getActorName() + '.' + self.owner.getName()
+        cdef str loggerName = "TestLogger" #self.owner.getActorName() + '.' + self.owner.getName()
         self.logger = spdlog_setup.get_logger(loggerName)
         if self.logger == None:
             self.logger = spdlog.ConsoleLogger(loggerName, True, True, False)
             self.logger.set_pattern(spdlog_setup.global_pattern)
         # print  ( "Component() : '%s'" % self )
         self.coord = Coordinator(self)
-        #self.thread = None
+        self.thread = None
  
     cpdef getName(self):
         '''
@@ -704,11 +705,11 @@ cdef class CythonComponent(object):
         pass
     
     cpdef joinGroup(self, groupName, instName, groupPriority):
-        if groupPriority == None: # TODO: check if this is a valid replacement for default value from parameter list
+        if groupPriority == None:
             groupPriority = self.GROUP_PRIORITY_MIN
         if self.thread == None:
             self.thread = self.owner.thread
-        group = self.coord.getGroup(groupName, instName)
+        cdef object group = self.coord.getGroup(groupName, instName)
         if group == None:
             group = self.coord.joinGroup(self.thread, groupName, instName, self.getLocalID())
             self.thread.addGroupSocket(group, groupPriority)
