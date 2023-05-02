@@ -66,6 +66,7 @@ cdef class CythonComponentThread():
     cdef object instance
     cdef object schedulerType
     cdef object control
+    cdef dict __dict__
     cdef void* ctx
     cdef void* sckt
 
@@ -85,12 +86,12 @@ cdef class CythonComponentThread():
         '''
         Create the control socket and connect it to the socket in the parent part
         '''
-        self.control = self.context.socket(zmq.PAIR)
+        #self.control = self.context.socket(zmq.PAIR)
         #self.control.connect('inproc://part_' + self.name + '_control')
-        self.control.connect("tcp://127.0.0.1:11111")
-        #self.sckt = z.zmq_socket(self.ctx, z.ZMQ_PAIR)
-        #if (z.zmq_bind(self.sckt, "inproc://part_Test_Part_control") != 0):
-        #    print("Cython: error binding!") #error("Could not bind comp.pyx PAIR socket address")
+        #self.control.connect("tcp://127.0.0.1:11111")
+        self.sckt = z.zmq_socket(self.ctx, z.ZMQ_PAIR)
+        if (z.zmq_bind(self.sckt, "inproc://part_Test_Part_control") != 0):
+            print("Cython: error binding!") #error("Could not bind comp.pyx PAIR socket address")
 
     cpdef sendControl(self, msg):
         assert self.control != None
@@ -98,13 +99,13 @@ cdef class CythonComponentThread():
 
     cpdef setupSockets(self):
         cdef char buf[6]
-        #if (z.zmq_recvbuf(self.sckt, buf, sizeof(buf), 0) == -1):
-        #    print("Cython: error receiving build message") #error("Could not receive on comp.pyx PAIR socket")
+        if (z.zmq_recvbuf(self.sckt, buf, sizeof(buf), 0) == -1):
+            print("Cython: error receiving build message") #error("Could not receive on comp.pyx PAIR socket")
         #print("Cython: received " + str(buf))
         #printf("Cython: message - %s\n", <char*>buf)
         #fflush(stdout)
         #print("Cython: received build")
-        msg = self.control.recv()
+        #msg = self.control.recv()
         #print("Received build")
         msg = bytes(buf).decode("utf-8")
         #msg = <str><void*>buf
@@ -528,7 +529,7 @@ cdef class CythonComponent(object):
         # self.loghandler.setFormatter(self.logformatter)
         # self.logger.addHandler(self.loghandler)
         #
-        cdef str loggerName = "TestLogger" #self.owner.getActorName() + '.' + self.owner.getName()
+        cdef str loggerName = self.owner.getActorName() + '.' + self.owner.getName()
         self.logger = spdlog_setup.get_logger(loggerName)
         if self.logger == None:
             self.logger = spdlog.ConsoleLogger(loggerName, True, True, False)
