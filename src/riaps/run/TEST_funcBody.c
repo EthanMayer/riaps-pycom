@@ -23,7 +23,19 @@ void error(char* msg) {
 
 // Function to be run on a thread to send back data
 void* test(void* context) {
+    Py_Initialize();
     PyGILState_STATE gstate;
+    // Py_BEGIN_ALLOW_THREADS
+    // gstate = PyGILState_Ensure();
+    // PyRun_SimpleString("print('Thread: importing ZMQ')");
+    // PyObject* zmqP = PyImport_ImportModule("zmq");
+    // PyRun_SimpleString("print('Thread: performing zmq.Context()')");
+    // PyObject* ctxP = PyObject_CallMethod(zmqP, "Context", NULL);
+    // PyRun_SimpleString("print('Thread: performing ctx.socket(zmq.PAIR)')")
+    // PyObject* scktP = PyObject_CallMethod(ctxP, "socket", "zmq.PAIR");
+    // PyGILState_Release(gstate);
+    // Py_END_ALLOW_THREADS
+
     // Debug identify self
     long thread = pthread_self();
     printf("Thread %ld: Started test function\n", thread);
@@ -35,25 +47,25 @@ void* test(void* context) {
     if (zmq_connect(sckt, "inproc://part_Test_Part_control") != 0) {
         error("Could not connect to main socket\n");
     }
-    sleep(2);
+    sleep(1);
     // Send the Ready message to main thread
     char* buf = "build";
-    fflush(stdout);
-    Py_BEGIN_ALLOW_THREADS
-    gstate = PyGILState_Ensure();
-    PyObject* obj = Py_BuildValue("s", buf); 
-    PyObject* objRepr = PyObject_Repr(obj);
-    char* objStr = PyUnicode_AsUTF8(objRepr);
-    printf("Thread %ld: Object - %s\n", thread, objStr);
-    printf("Thread %ld: Sending 'build' signal\n", thread);
+    // fflush(stdout);
+    // Py_BEGIN_ALLOW_THREADS
+    // gstate = PyGILState_Ensure();
+    // PyObject* obj = Py_BuildValue("s", buf); 
+    // PyObject* objRepr = PyObject_Repr(obj);
+    // char* objStr = PyUnicode_AsUTF8(objRepr);
+    // printf("Thread %ld: Object - %s\n", thread, objStr);
+    printf("Thread %ld: Sending %s signal\n", thread, buf);
     fflush(stdout);
     if (zmq_send(sckt, buf, sizeof(buf), 0) != sizeof(buf)) {
         error("Pair send buffer length incorrect\n");
     }
-    Py_DECREF(objRepr);
-    Py_DECREF(obj);
-    PyGILState_Release(gstate);
-    Py_END_ALLOW_THREADS
+    // Py_DECREF(objRepr);
+    // Py_DECREF(obj);
+    // PyGILState_Release(gstate);
+    // Py_END_ALLOW_THREADS
     sleep(1);
 
     // Receive build message from main thread

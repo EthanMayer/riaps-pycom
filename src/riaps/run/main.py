@@ -30,7 +30,7 @@ patch_modules()
 from riaps.utils.config import Config
 from riaps.utils.trace import riaps_trace
 
-from .actor import Actor
+from riaps.run.actor import Actor
 
 # : Singleton Actor object
 theActor = None

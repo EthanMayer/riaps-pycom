@@ -17,7 +17,8 @@ from Cython.Distutils import build_ext
 ext_modules = [Extension("comp", ["comp.pyx"],
                          include_dirs = ["/opt/homebrew/Cellar/zeromq/4.3.4/include", "/opt/homebrew/lib/python3.9/site-packages/zmq/utils"],
                          library_dirs = ["/opt/homebrew/Cellar/zeromq/4.3.4/lib"],
-                         libraries = ["zmq"])]
+                         libraries = ["zmq"]),
+              Extension("cython_test", ["cython_test.pyx"])]
 
 # Build Cython code
 setup(

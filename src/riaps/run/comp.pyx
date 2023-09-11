@@ -97,18 +97,14 @@ cdef class CythonComponentThread():
         assert self.control != None
         self.control.send_pyobj(msg)
 
+    # Shadow - pyzmq operaiton
+    # pickle/unpickle in cython
+    # swap all to PyZMQ
     cpdef setupSockets(self):
         cdef char buf[6]
         if (z.zmq_recvbuf(self.sckt, buf, sizeof(buf), 0) == -1):
             print("Cython: error receiving build message") #error("Could not receive on comp.pyx PAIR socket")
-        #print("Cython: received " + str(buf))
-        #printf("Cython: message - %s\n", <char*>buf)
-        #fflush(stdout)
-        #print("Cython: received build")
-        #msg = self.control.recv()
-        #print("Received build")
         msg = bytes(buf).decode("utf-8")
-        #msg = <str><void*>buf
         print("Cython: received message: " + msg)
         if msg != "build":
             raise BuildError('setupSockets: invalid msg: %s' % str(msg)) 
@@ -437,17 +433,6 @@ cdef class CythonComponentThread():
 
     cpdef launchThread(self):
         cdef pthread_t t1    # Thread 1's ID
-        #portDict = {}   # Dictionary for ports
-
-        # Create main thread pair socket and bind to IP
-        #cdef void* ctx = z.zmq_ctx_new()
-        #cdef void* sckt = z.zmq_socket(ctx, z.ZMQ_PAIR)
-
-        #if (z.zmq_bind(sckt, "tcp://127.0.0.1:5556") != 0):
-        #    error("Could not bind comp.pyx PAIR socket address")
-
-        # Store socket in dictionary
-        #store_sckt("Thread1", sckt, portDict)
 
         # Open .so shared library and grab function from it
         cdef char* libpath = "TEST_funcBody.so";

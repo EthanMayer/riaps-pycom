@@ -11,22 +11,22 @@ import time
 
 from enum import Enum
 
-from .port import PortInfo
-from .pubPort import PubPort
-from .subPort import SubPort
-from .cltPort import CltPort
-from .srvPort import SrvPort
-from .reqPort import ReqPort
-from .repPort import RepPort
-from .qryPort import QryPort
-from .ansPort import AnsPort
-from .timPort import TimPort
-from .insPort import InsPort
-from .exc import StateError
-from .comp import ComponentThread
-from .exc import SetupError
-from .exc import ControlError
-from .exc import BuildError
+from riaps.run.port import PortInfo
+from riaps.run.pubPort import PubPort
+from riaps.run.subPort import SubPort
+from riaps.run.cltPort import CltPort
+from riaps.run.srvPort import SrvPort
+from riaps.run.reqPort import ReqPort
+from riaps.run.repPort import RepPort
+from riaps.run.qryPort import QryPort
+from riaps.run.ansPort import AnsPort
+from riaps.run.timPort import TimPort
+from riaps.run.insPort import InsPort
+from riaps.run.exc import StateError
+from riaps.run.comp import CythonComponentThread
+from riaps.run.exc import SetupError
+from riaps.run.exc import ControlError
+from riaps.run.exc import BuildError
 import logging
 
 
@@ -173,7 +173,7 @@ class Part(object):
        
         self.setupPorts(self.ports)
         
-        self.thread = ComponentThread(self)     # Create component thread
+        self.thread = CythonComponentThread(self)     # Create component thread
         self.thread.start() 
         time.sleep(0.01)  # Hack to yield to the component thread
         self.sendControl("build", -1)  # Command the component thread to build itself
@@ -191,7 +191,7 @@ class Part(object):
                                      'qry', 'ans'}:
                 queue.append([prefix,res])
             else:
-                raise BuildError("invalid response from ComponentThread %s" % msg)
+                raise BuildError("invalid response from CythonComponentThread %s" % msg)
         # Process all component thread responses 
         for elt in queue:
             self.parent.registerEndpoint(elt)
