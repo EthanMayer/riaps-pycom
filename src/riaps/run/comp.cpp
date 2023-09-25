@@ -5,20 +5,12 @@ Created on Sept. 24, 2023
 @author: EthanMayer
 */
 
-#include <string>
+#include "comp.hpp"
 
 class CppComponent {
     /*
     Base class for RIAPS Cython application components;
     */
-    // All cython class attributes must be declared at compile time
-    int GROUP_PRIORITY_MAX;
-    int GROUP_PRIORITY_MIN;
-    void* owner;
-    void* logger;
-    void* coord;
-    //dict __dict__ // catch-all for dynamic attributes assigned at runtime
-    void* thread;
 
     CppComponent(void* object) {
         /*
@@ -28,7 +20,7 @@ class CppComponent {
         this->GROUP_PRIORITY_MIN = 256; // Priority 256 means lowest priority (>= 256 port indices are unexpected)
         void* class_;// = getattr('__class__');
         std::string className;// = getattr(class_, '__name__');
-        this->owner = class_.OWNER; // This is set in the parent part (temporarily)
+        this->owner;// = class_.OWNER; // This is set in the parent part (temporarily)
         //
         // Logger attributes
         // logger: logger for this class
@@ -72,7 +64,7 @@ class CppComponent {
         /*;
         Return a locally unique ID (int) of the component. The ID is unique within the actor.;
         */
-        return id(self)
+        return id(self);
     }
 
     void getActorName() {
@@ -241,14 +233,14 @@ class CppComponent {
         ;
     }
     
-    void handleLeaderExited(group, leaderId) {
+    void handleLeaderExited(void* group, std::uint64_t leaderId) {
         /*
         Default handler for 'leader exited' events
         */ 
         ;
     }
     
-    void joinGroup(groupName, instName, groupPriority) {
+    void* joinGroup(void* groupName, void* instName, void* groupPriority) {
         if (groupPriority == NULL) {
             groupPriority = this->GROUP_PRIORITY_MIN;
         }
@@ -263,7 +255,7 @@ class CppComponent {
         return group;
     }
 
-    bool leaveGroup(group) {
+    bool leaveGroup(void* group) {
         assert type(group) == Group;
         if (this->thread == NULL) {
             this->thread = this->owner.thread;
