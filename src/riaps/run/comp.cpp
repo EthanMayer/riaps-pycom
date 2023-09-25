@@ -5,235 +5,271 @@ Created on Sept. 24, 2023
 @author: EthanMayer
 */
 
+#include <string>
 
-
-cdef class CythonComponent(void* object)
+class CppComponent {
     /*
-    Base class for RIAPS Cython application components
+    Base class for RIAPS Cython application components;
     */
-    # All cython class attributes must be declared at compile time
-    cdef int GROUP_PRIORITY_MAX
-    cdef int GROUP_PRIORITY_MIN
-    cdef object owner
-    cdef object logger
-    cdef object coord
-    cdef dict __dict__ # catch-all for dynamic attributes assigned at runtime
-    cdef object thread
+    // All cython class attributes must be declared at compile time
+    int GROUP_PRIORITY_MAX;
+    int GROUP_PRIORITY_MIN;
+    void* owner;
+    void* logger;
+    void* coord;
+    //dict __dict__ // catch-all for dynamic attributes assigned at runtime
+    void* thread;
 
-    def __init__(self):
+    CppComponent(void* object) {
         /*
         Constructor
         */
-        self.GROUP_PRIORITY_MAX = 0 # Priority 0 means highest priority
-        self.GROUP_PRIORITY_MIN = 256 # Priority 256 means lowest priority (>= 256 port indices are unexpected)
-        cdef type class_ = getattr(self, '__class__')
-        cdef str className = getattr(class_, '__name__')
-        self.owner = class_.OWNER  # This is set in the parent part (temporarily)
-        #
-        # Logger attributes
-        # logger: logger for this class
-        # loghandler: handler for the logger (defaults to a StreamHandler)
-        # logformatter: formatter assigned to the handler (default: Level:Time:Process:Class:Message)
-        # self.logger = logging.getLogger(className)
-        # self.logger.setLevel(logging.INFO)
-        # self.logger.propagate=False
-        # self.loghandler = logging.StreamHandler()
-        # self.loghandler.setLevel(logging.INFO)
-        # self.logformatter = logging.Formatter('%(levelname)s:%(asctime)s:[%(process)d]:%(name)s:%(message)s')
-        # self.loghandler.setFormatter(self.logformatter)
-        # self.logger.addHandler(self.loghandler)
-        #
-        cdef str loggerName = self.owner.getActorName() + '.' + self.owner.getName()
-        self.logger = spdlog_setup.get_logger(loggerName)
-        if self.logger == None:
-            self.logger = spdlog.ConsoleLogger(loggerName, True, True, False)
-            self.logger.set_pattern(spdlog_setup.global_pattern)
-        # print  ( "Component() : '%s'" % self )
-        self.coord = Coordinator(self)
-        self.thread = None
+        this->GROUP_PRIORITY_MAX = 0; // Priority 0 means highest priority
+        this->GROUP_PRIORITY_MIN = 256; // Priority 256 means lowest priority (>= 256 port indices are unexpected)
+        void* class_;// = getattr('__class__');
+        std::string className;// = getattr(class_, '__name__');
+        this->owner = class_.OWNER; // This is set in the parent part (temporarily)
+        //
+        // Logger attributes
+        // logger: logger for this class
+        // loghandler: handler for the logger (defaults to a StreamHandler)
+        // logformatter: formatter assigned to the handler (default: Level:Time:Process:Class:Message)
+        // this->logger = logging.getLogger(className);
+        // this->logger.setLevel(logging.INFO);
+        // this->logger.propagate=false;
+        // this->loghandler = logging.StreamHandler();
+        // this->loghandler.setLevel(logging.INFO);
+        // this->logformatter = logging.Formatter('%(levelname)s:%(asctime)s:[%(process)d]:%(name)s:%(message)s');
+        // this->loghandler.setFormatter(this->logformatter);
+        // this->logger.addHandler(this->loghandler);
+        //
+        std::string loggerName = this->owner.getActorName() + '.' + this->owner.getName();
+        this->logger = spdlog_setup.get_logger(loggerName);
+        if (this->logger == NULL) {
+            this->logger = spdlog.ConsoleLogger(loggerName, true, true, false);
+            this->logger.set_pattern(spdlog_setup.global_pattern);
+        }
+        // print  ( "Component() : '%s'" % self );
+        this->coord = NULL;//Coordinator(self);
+        this->thread = NULL;
+    }
  
-    cpdef getName(self)
-        /*
-        Return the name of the component (as in model)
+    void getName() {
+        /*;
+        Return the name of the component (as in model);
         */
-        return self.owner.getName()
+        return this->owner.getName();
+    }
     
-    cpdef getTypeName(self)
-        /*
-        Return the name of the type of the component (as in model) 
+    void getTypeName() {
+        /*;
+        Return the name of the type of the component (as in model) ;
         */
-        return self.owner.getTypeName()
+        return this->owner.getTypeName();
+    }
     
-    cpdef getLocalID(self)
-        /*
-        Return a locally unique ID (int) of the component. The ID is unique within the actor.
+    void getLocalID() {
+        /*;
+        Return a locally unique ID (int) of the component. The ID is unique within the actor.;
         */
         return id(self)
+    }
 
-    cpdef getActorName(self)
-        /*
-        Return the name of the parent actor (as in model)
+    void getActorName() {
+        /*;
+        Return the name of the parent actor (as in model);
         */
-        return self.owner.getActorName()
+        return this->owner.getActorName();
+    }
     
-    cpdef getAppName(self)
-        /*
-        Return the name of the parent application (as in model)
+    void getAppName() {
+        /*;
+        Return the name of the parent application (as in model);
         */
-        return self.owner.getAppName()
+        return this->owner.getAppName();
+    }
     
-    cpdef getActorID(self)
-        /*
-        Return a globally unique ID (8 bytes) for the parent actor. 
+    void getActorID() {
+        /*;
+        Return a globally unique ID (8 bytes) for the parent actor. ;
         */
-        return self.owner.getActorID()
+        return this->owner.getActorID();
+    }
     
-    cpdef getUUID(self)
-        /*
-        Return the network unique ID for the parent actor
+    void getUUID() {
+        /*;
+        Return the network unique ID for the parent actor;
         */
-        return self.owner.getUUID()
+        return this->owner.getUUID();
+    }
     
-    cpdef handleActivate(self)
-        /*
-        Default activation handler
+    void handleActivate() {
+        /*;
+        Default activation handler;
         */
-        pass
+        ;
+    }
     
-    cpdef handleDeactivate(self)
-        /*
-        Default deactivation handler
+    void handleDeactivate() {
+        /*;
+        Default deactivation handler;
         */
-        pass
+        ;
+    }
     
-    cpdef handlePassivate(self)
-        /*
-        Default activation handler
+    void handlePassivate() {
+        /*;
+        Default activation handler;
         */
-        pass
+        ;
+    }
     
-    cpdef handleCPULimit(self)
-        /* 
+    void handleCPULimit() {
+        /* ;
         Default handler for CPU limit exceed
         */
-        pass
+        ;
+    }
     
-    cpdef handleMemLimit(self)
+    void handleMemLimit() {
         /* 
         Default handler for memory limit exceed
         */
-        pass
+        ;
+    }
     
-    cpdef handleSpcLimit(self)
+    void handleSpcLimit() {
         /* 
         Default handler for space limit exceed
         */
-        pass
+        ;
+    }
         
-    cpdef handleNetLimit(self)
+    void handleNetLimit() {
         /* 
         Default handler for space limit exceed
         */
-        pass
+        ;
+    }
     
-    cpdef handleNICStateChange(self, state)
+    void handleNICStateChange(state) {
         /* 
         Default handler for NIC state change
         */
-        pass
+        ;
+    }
     
-    cpdef handlePeerStateChange(self, state, uuid)
+    void handlePeerStateChange(state, uuid) {
         /* 
         Default handler for peer state change
         */
-        pass
+        ;
+    }
     
-    cpdef handleDeadline(self, _funcName)
+    void handleDeadline(_funcName) {
         /*
         Default handler for deadline violation
         */
-        pass
+        ;
+    }
     
-    cpdef handleGroupMessage(self, _group)
+    void handleGroupMessage(_group) {
         /*
         Default handler for group messages.
         Implementation must immediately call recv/recv_pyobj on the group to obtain message. 
         */
-        pass
+        ;
+    }
     
-    cpdef handleVoteRequest(self, group, rfvId)
+    void handleVoteRequest(group, rfvId) {
         /*
         Default handler for vote requests (in member)
         Implementation must recv/recv_pyobj to obtain the topic. 
         */
-        pass
+        ;
+    }
     
-    cpdef handleVoteResult(self, group, rfvId, vote)
+    void handleVoteResult(group, rfvId, vote) {
         /*
         Default handler for the result of a vote (in member)
         */
-        pass
+        ;
+    }
     
-    cpdef handleActionVoteRequest(self, group, rfvId, when)
+    void handleActionVoteRequest(group, rfvId, when) {
         /*
         Default handler for request to vote an action in the future (in member)
         Implementation must recv/recv_pyobj to obtain the action topic. 
         */
-        pass
+        ;
+    }
         
-    cpdef handleMessageToLeader(self, group)
+    void handleMessageToLeader(group) {
         /*
         Default handler for messages sent to the leader (in leader)
         Leader implementation must immediately call recv/recv_pyobj on the group to obtain message. 
         */
-        pass
+        ;
+    }
     
-    cpdef handleMessageFromLeader(self, group)
+    void handleMessageFromLeader(group) {
         /*
         Default handler for messages received from the leader (in member) 
         Member implementation must immediately call recv/recv_pyobj on the group to obtain message. 
         */
-        pass
+        ;
+    }
     
-    cpdef handleMemberJoined(self, group, memberId)
+    void handleMemberJoined(group, memberId) {
         /*
         Default handler for 'member join' events
         */  
-        pass
+        ;
+    }
     
-    cpdef handleMemberLeft(self, group, memberId)
+    void handleMemberLeft(group, memberId) {
         /*
         Default handler for 'member leave' events
         */          
-        pass
+        ;
+    }
     
-    cpdef handleLeaderElected(self, group, leaderId)
+    void handleLeaderElected(group, leaderId) {
         /*
         Default handler for 'leader elected' events
         */  
-        pass
+        ;
+    }
     
-    cpdef handleLeaderExited(self, group, leaderId)
+    void handleLeaderExited(group, leaderId) {
         /*
         Default handler for 'leader exited' events
-        */  
-        pass
+        */ 
+        ;
+    }
     
-    cpdef object joinGroup(self, groupName, instName, groupPriority):
-        if groupPriority == None:
-            groupPriority = self.GROUP_PRIORITY_MIN
-        if self.thread == None:
-            self.thread = self.owner.thread
-        cdef object group = self.coord.getGroup(groupName, instName)
-        if group == None:
-            group = self.coord.joinGroup(self.thread, groupName, instName, self.getLocalID())
-            self.thread.addGroupSocket(group, groupPriority)
-        return group
-            
-    cpdef object leaveGroup(self,group):
-        assert type(group) == Group
-        if self.thread == None:
-            self.thread = self.owner.thread
-        self.thread.delGroupSocket(group)
-        self.coord.leaveGroup(group)
-        return True
+    void joinGroup(groupName, instName, groupPriority) {
+        if (groupPriority == NULL) {
+            groupPriority = this->GROUP_PRIORITY_MIN;
+        }
+        if (this->thread == NULL) {
+            this->thread = this->owner.thread;
+        }
+        object group = this->coord.getGroup(groupName, instName);
+        if (group == NULL) {
+            group = this->coord.joinGroup(this->thread, groupName, instName, this->getLocalID());
+            this->thread.addGroupSocket(group, groupPriority);
+        }
+        return group;
+    }
+
+    bool leaveGroup(group) {
+        assert type(group) == Group;
+        if (this->thread == NULL) {
+            this->thread = this->owner.thread;
+        }
+        this->thread.delGroupSocket(group);
+        this->coord.leaveGroup(group);
+        return true
+    }
+}
