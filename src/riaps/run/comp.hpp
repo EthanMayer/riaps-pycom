@@ -1,12 +1,12 @@
 /*
 C++ Component Base Class
-Created on Sept. 24, 2023
+Created on Sept. 20, 2023
 
 @author: EthanMayer
 */
 
-#ifndef COMP_H
-#define COMP_H
+#ifndef COMP_HPP
+#define COMP_HPP
 
 #include <string>
 #include <cinttypes>
@@ -28,6 +28,9 @@ class CppComponent {
     public:
 
         // Base Class Functions
+
+        // Constructor
+        CppComponent(std::any object);
 
         /*
         Return the name of the component (as in model);
