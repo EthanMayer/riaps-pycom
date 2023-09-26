@@ -20,15 +20,15 @@ class CppComponent {
     std::string className = "";
     std::string loggerName = "";
     
-    std::any owner;
-    std::any logger;
-    std::any coord;
+    std::any owner = NULL;
+    std::any logger = NULL;
+    std::any coord = NULL;
     std::any thread = NULL;
 
     public:
 
         // Base Class Functions
-        
+
         /*
         Return the name of the component (as in model);
         */
