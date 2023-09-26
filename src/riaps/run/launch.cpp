@@ -22,12 +22,11 @@ void* thread1(void* threadid) {
 }
 
 int main() {
-    int pthread_t t1;
+    pthread_t t1;
 
-    if (pthread_create(&t1, NULL, thread1, ) = -1) {
+    if (pthread_create(&t1, NULL, thread1, (void*)t1) == -1) {
         error("Could not create thread in launch.cpp");
     }
 
     pthread_exit(NULL);
-    return 0;
 }

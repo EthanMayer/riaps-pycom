@@ -11,7 +11,8 @@ rm -rf ~/build/*
 
 # Compile C code
 echo "====Compiling C++ code...===="
-clang++ -std=c++17 -stdlib=libc++ -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -Wall -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -I /opt/homebrew/Cellar/zeromq/4.3.4/include -c comp.cpp -o build/comp.o
+clang++ -std=c++17 -stdlib=libc++ -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -Wall -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk -c comp.cpp -o build/comp.o
+clang++ -std=c++17 -stdlib=libc++ -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -Wall -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk launch.cpp -o build/launch
 
 # Bundle compiled C code into .so
 #echo "====Bundling C++ code...===="
