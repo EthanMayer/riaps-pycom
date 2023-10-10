@@ -22,9 +22,9 @@ extern "C" void* thread1(void*) {
     // std::cout << "Test Component Name: " << testComp.getName() << std::endl;
 
     zmq::context_t ctx;
-    // zmq::socket_t sock(ctx, zmq::socket_type::pair);
-    zmq::socket_t sock(ctx, ZMQ_REQ);
-    // sock.bind("inproc://part_TEST_control");
+    zmq::socket_t sock(ctx, ZMQ_PAIR);
+    // zmq::socket_t sock(ctx, ZMQ_REQ);
+    // sock.connect("inproc://part_TEST_control");
     sock.connect("tcp://localhost:5555");
 
     nlohmann::json send;
@@ -36,8 +36,10 @@ extern "C" void* thread1(void*) {
     sock.send(query);
 
     zmq::message_t reply;
-    sock.recv(reply);
-    std::cout << "Thread: reply received: " << reply << std::endl;
+    sock.recv(&reply);
+    nlohmann::json reply_json = nlohmann::json::parse(reply.to_string());
+    // nlohmann::json reply_json = nlohmann::json::parse(std::string(static_cast<char*>(reply.data()), reply.size()));
+    std::cout << "Thread: reply received: \n" << reply_json.dump(4) << std::endl;
 
     pthread_exit(NULL);
 }
