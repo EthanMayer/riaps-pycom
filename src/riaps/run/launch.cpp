@@ -9,6 +9,9 @@ Created on Sept. 21, 2023
 #include <iostream>
 #include <string>
 #include <unistd.h>
+#include <dlfcn.h>
+
+#include "comp.hpp"
 
 // Error handling
 void error(std::string msg) {
@@ -16,20 +19,24 @@ void error(std::string msg) {
     exit(-1);
 }
 
-void* thread1(void*) {
-    pthread_t tid = pthread_self();
-    // long pid = getpid();
-    std::cout << "Thread: Process ID: " << getpid() << " Thread ID: " << tid << std::endl;
-    pthread_exit(NULL);
-}
-
 int main() {
     pthread_t t1;
 
     std::cout << "Main: Process ID: " << getpid() << std::endl;
 
-    if (pthread_create(&t1, NULL, thread1, NULL) == -1) {
-        error("Could not create thread in launch.cpp");
+    char* libpath = "threadBody.so";
+    void* libhandle = dlopen(libpath, RTLD_LAZY);
+
+    if (libhandle == NULL) {
+        error("Main: Could not open shared library in launch.cpp");
+    }
+
+    typedef void* (*fptr)();
+
+    void* thread1 = dlsym(libhandle, "thread1");
+
+    if (pthread_create(&t1, NULL, (void * _Nullable (* _Nonnull)(void * _Nullable))thread1, NULL) == -1) {
+        error("Main: Could not create thread in launch.cpp");
     }
 
     pthread_exit(NULL);

@@ -11,22 +11,22 @@ Created on Sept. 20, 2023
 Base class for RIAPS Cython application components;
 */
 
-CppComponent::CppComponent(std::any object) {
-    /*
-    Constructor
-    */
-    // //std::any class_ = getattr('__class__');
-    // this->className = "";// = getattr(class_, '__name__');
-    // //this->owner = class_.OWNER; // This is set in the parent part (temporarily)
-    // this->loggerName = this->owner.getActorName() + '.' + this->owner.getName();
-    // this->logger = spdlog_setup.get_logger(loggerName);
-    // if (this->logger == NULL) {
-    //     this->logger = spdlog.ConsoleLogger(loggerName, true, true, false);
-    //     this->logger.set_pattern(spdlog_setup.global_pattern);
-    // }
-    // // print  ( "Component() : '%s'" % self );
-    // this->coord = NULL;//Coordinator(self);
-}
+// CppComponent::CppComponent(std::any object = NULL) {
+//     /*
+//     Constructor
+//     */
+//     // //std::any class_ = getattr('__class__');
+//     // this->className = "";// = getattr(class_, '__name__');
+//     // //this->owner = class_.OWNER; // This is set in the parent part (temporarily)
+//     // this->loggerName = this->owner.getActorName() + '.' + this->owner.getName();
+//     // this->logger = spdlog_setup.get_logger(loggerName);
+//     // if (this->logger == NULL) {
+//     //     this->logger = spdlog.ConsoleLogger(loggerName, true, true, false);
+//     //     this->logger.set_pattern(spdlog_setup.global_pattern);
+//     // }
+//     // // print  ( "Component() : '%s'" % self );
+//     // this->coord = NULL;//Coordinator(self);
+// }
 
 std::string CppComponent::getName() {
     /*;
@@ -85,9 +85,9 @@ std::uint64_t CppComponent::getUUID() {
 }
 
 std::any CppComponent::joinGroup(std::any groupName, std::any instName, std::any groupPriority) {
-    // if (!groupPriority.has_value()) {
-    //     groupPriority = this->GROUP_PRIORITY_MIN;
-    // }
+    if (!groupPriority.has_value()) {
+        groupPriority = this->GROUP_PRIORITY_MIN;
+    }
     // if (!this->thread.has_value()) {
     //     this->thread = this->owner.thread;
     // }
