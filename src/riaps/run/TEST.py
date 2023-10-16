@@ -1,7 +1,7 @@
 # TEST Python file
 
 import zmq
-from ctypes import CDLL
+from ctypes import CDLL, c_int
 import jsonplus as json
 import threading
 from collections import namedtuple
@@ -10,11 +10,12 @@ context = zmq.Context()
 control = context.socket(zmq.PAIR)
 # control = context.socket(zmq.REP)
 # control.bind('inproc://part_TEST_control')
-control.bind('tcp://0.0.0.0:5555')
+# control.bind('tcp://0.0.0.0:5555')
+control.bind('ipc://part_TEST_control')
 
 print("Python: launching c++ .so")
 libc = CDLL("launch.so")
-t = threading.Thread(target=libc.main)
+t = threading.Thread(target=libc.main, args=(c_int(1), ))
 t.start()
 # libc.main()
 

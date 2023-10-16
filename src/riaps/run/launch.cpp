@@ -19,10 +19,12 @@ void error(std::string msg) {
     exit(-1);
 }
 
-int main() {
+int main(int test = 0) {
     pthread_t t1;
 
     std::cout << "Main: Process ID: " << getpid() << std::endl;
+
+    std::cout << "Int: " << test << std::endl;
 
     char* libpath = "threadBody.so";
     void* libhandle = dlopen(libpath, RTLD_LAZY);

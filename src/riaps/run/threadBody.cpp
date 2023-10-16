@@ -25,14 +25,15 @@ extern "C" void* thread1(void*) {
     zmq::socket_t sock(ctx, ZMQ_PAIR);
     // zmq::socket_t sock(ctx, ZMQ_REQ);
     // sock.connect("inproc://part_TEST_control");
-    sock.connect("tcp://localhost:5555");
+    // sock.connect("tcp://localhost:5555");
+    sock.connect("ipc://part_TEST_control");
 
     nlohmann::json send;
     send["Contents"] = "Ready";
     std::string send_str = send.dump();
     std::cout << "Thread: sending: " << send_str << std::endl;
     zmq::message_t query(send_str.length());
-    memcpy(query.data(), (send_str.c_str()), (send_str.size()));
+    std::memcpy(query.data(), (send_str.c_str()), (send_str.size()));
     sock.send(query);
 
     zmq::message_t reply;
