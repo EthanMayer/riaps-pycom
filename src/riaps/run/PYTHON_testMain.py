@@ -5,25 +5,46 @@ import timeit
 import jsonplus as json
 import threading
 from collections import namedtuple
+from math import sqrt
 
-def threadBody(context, addr, runs):
+def fib(n):
+    if (n == 0): return 0
+    if (n == 1): return 1
+
+    prevNum = 0
+    curNum = 1
+
+    for i in range(2,n+1):
+        prevPrevNum = prevNum
+        prevNum = curNum
+        curNum = prevNum + prevPrevNum
+
+    return curNum
+
+def threadBody(context, addr, runs, math = 0, debug = 0):
     control = context.socket(zmq.PAIR)
     control.connect(addr)
 
     i = 0
     while (i < runs):
-        # print("Python_Thread: ready to send")
-        send = json.dumps(("Hello", "There"))
+        if debug: print("Python_Thread: ready to send")
+
+        if math: 
+            x = fib(int(sqrt(i)))
+            send_str = "Fibonacci number of sqrt(" + str(i) + ")"
+            send = json.dumps((send_str, x))
+        else:
+            send = json.dumps(("Contents", "Ready"))
         control.send(bytes(send, encoding='utf8'))
 
-        # print("Python_Thread: ready to receive")
+        if debug: print("Python_Thread: ready to receive")
         message = control.recv()
         message = json.loads(message)
-        # print("Python_Thread: received: " + str(message) + " of type: " + str(type(message)))
+        if debug: print("Python_Thread: received: " + str(message) + " of type: " + str(type(message)))
         # i = message.y
         i = i + 1
 
-def main(runs):
+def main(runs, math = 0, debug = 0):
     start_time = timeit.default_timer()
 
     context1 = zmq.Context()
@@ -36,18 +57,18 @@ def main(runs):
     control2 = context2.socket(zmq.PAIR)
     control2.bind('inproc://PYTHON_TEST2_control')
 
-    t = threading.Thread(target=threadBody, args=(context1, 'inproc://PYTHON_TEST1_control', runs, ))
+    t = threading.Thread(target=threadBody, args=(context1, 'inproc://PYTHON_TEST1_control', runs, math, debug, ))
     t.start()
 
-    t2 = threading.Thread(target=threadBody, args=(context2, 'inproc://PYTHON_TEST2_control', runs, ))
+    t2 = threading.Thread(target=threadBody, args=(context2, 'inproc://PYTHON_TEST2_control', runs, math, debug, ))
     t2.start()
 
     i = 0
     while (i < runs):
-        # print("Python_Main: ready to receive")
+        if debug: print("Python_Main: ready to receive")
         message = control1.recv()
         message = json.loads(message)
-        # print("Python_Main: received: " + str(message) + " of type: " + str(type(message)))
+        if debug: print("Python_Main: received: " + str(message) + " of type: " + str(type(message)))
 
         Point = namedtuple("Point", ["x", "y"])
         send = json.dumps(Point(i, i+1))

@@ -11,10 +11,32 @@ Created on Sept. 21, 2023
 #include <unistd.h>
 #include "json.hpp"
 
+typedef struct {
+    std::string addr;
+    int runs;
+    int math;
+    int print;
+} arg_array;
 
-extern "C" void* thread1(std::string addr) {
+int fib(int n) {
+    if (n == 0) { return 0; }
+    if (n == 1) { return 1; }
+
+    int prevPrevNum, prevNum = 0, curNum = 1;
+
+    for (int i = 2; i <= n; i++) {
+        prevPrevNum = prevNum;
+        prevNum = curNum;
+        curNum = prevNum + prevPrevNum;
+    }
+
+    return curNum;
+}
+
+extern "C" void* thread1(arg_array arg) {
     pthread_t tid = pthread_self();
-    // std::cout << "Thread: Process ID: " << getpid() << " Thread ID: " << tid << std::endl;
+    if (arg.print) { std::cout << "Thread: Process ID: " << getpid() << " Thread ID: " << tid << std::endl; }
+    if (arg.print) { std::cout << "Thread: arg.addr: " << arg.addr << " arg.runs: " << arg.runs << std::endl; }
 
     // CppComponent testComp(NULL);
 
@@ -22,8 +44,7 @@ extern "C" void* thread1(std::string addr) {
 
     zmq::context_t ctx;
     zmq::socket_t sock(ctx, ZMQ_PAIR);
-    // sock.connect("inproc://part_TEST_control");
-    sock.connect(addr);
+    sock.connect(arg.addr);
 
     int i = 0;
     nlohmann::json send;
@@ -31,20 +52,30 @@ extern "C" void* thread1(std::string addr) {
     zmq::message_t reply;
     nlohmann::json reply_json;
 
-    while (i < 100000) {
-        send["Contents"] = "Ready";
+    while (i < arg.runs) {
+        if (arg.math) {
+            int x = fib((int)std::sqrt(i));
+            std::string send_fib_str = "Fibonacci number of sqrt(" + std::to_string(i) + ")";
+            nlohmann::json send_fib;
+            send_fib[send_fib_str] = x;
+            send = send_fib;
+        }
+        else {
+            nlohmann::json send_no_fib;
+            send_no_fib["Contents"] = "Ready";
+            send = send_no_fib;
+        }
+        
         send_str = send.dump();
-        // std::cout << "Thread: sending: " << send_str << std::endl;
-        // printf("Thread %l sending: ", tid, send_str);
-        // fflush();
+        if (arg.print) { std::cout << "Thread: sending: " << send_str << std::endl; }
         zmq::message_t query(send_str.length());
         std::memcpy(query.data(), (send_str.c_str()), (send_str.size()));
         sock.send(query);
 
         sock.recv(&reply);
         reply_json = nlohmann::json::parse(reply.to_string());
-        // std::cout << "Thread: reply received: \n" << reply_json.dump(4) << std::endl;
-        // std::cout << "Value of Point: " << reply_json["__value__"]["values"][1] << std::endl;
+        if (arg.print) { std::cout << "Thread: reply received: \n" << reply_json.dump(4) << std::endl; }
+        if (arg.print) { std::cout << "Value of Point: " << reply_json["__value__"]["values"][1] << std::endl; }
         i = (int)reply_json["__value__"]["values"][1];
     }
     

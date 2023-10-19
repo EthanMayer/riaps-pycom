@@ -20,4 +20,4 @@ clang++ -std=c++17 -stdlib=libc++ -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -
 clang++ -bundle -undefined dynamic_lookup -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk build/launch.o -L /opt/homebrew/Cellar/zeromq/4.3.4/lib -L /opt/homebrew/Cellar/cppzmq/4.10.0/lib -lzmq -o launch.so
 clang++ -bundle -undefined dynamic_lookup -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk build/threadBody.o -L /opt/homebrew/Cellar/zeromq/4.3.4/lib -L /opt/homebrew/Cellar/cppzmq/4.10.0/lib -L /Users/EthanMayer_1/Desktop/json -lzmq -o threadBody.so
 
-python3.11 TEST_DRIVER.py
+# python3.11 TEST_DRIVER.py

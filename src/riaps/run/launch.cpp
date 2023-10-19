@@ -10,8 +10,16 @@ Created on Sept. 21, 2023
 #include <string>
 #include <unistd.h>
 #include <dlfcn.h>
+#include <charconv>
 
 #include "comp.hpp"
+
+typedef struct {
+    std::string addr;
+    int runs;
+    int math;
+    int print;
+} arg_array;
 
 // Error handling
 void error(std::string msg) {
@@ -19,13 +27,16 @@ void error(std::string msg) {
     exit(-1);
 }
 
-int main(int runs = 0) {
+extern "C" int launch(int runs, int math = 0, int print = 0) {
     pthread_t t1;
     pthread_t t2;
+    arg_array arg1, arg2;
 
-    // std::cout << "Main: Process ID: " << getpid() << std::endl;
+    // int print = std::atoi(argv[3]);
 
-    // std::cout << "Int: " << test << std::endl;
+    if (print) { std::cout << "Main: Process ID: " << getpid() << std::endl; }
+
+    if (print) { std::cout << "Runs: " << runs << " Math: " << math << " Print: " << print << std::endl; }
 
     char* libpath = "threadBody.so";
     void* libhandle = dlopen(libpath, RTLD_LAZY);
@@ -38,19 +49,25 @@ int main(int runs = 0) {
 
     void* thread1 = dlsym(libhandle, "thread1");
 
-    std::string addr1 = "ipc://part_TEST1_control";
+    arg1.addr = "ipc://part_TEST1_control";
+    arg1.runs = runs; //std::atoi(argv[1]);
+    arg1.math = math; //std::atoi(argv[2]);
+    arg1.print = print; //std::atoi(argv[3]);
 
-    if (pthread_create(&t1, NULL, (void * _Nullable (* _Nonnull)(void * _Nullable))thread1, &addr1) == -1) {
+    if (pthread_create(&t1, NULL, (void * _Nullable (* _Nonnull)(void * _Nullable))thread1, &arg1) == -1) {
         error("Main: Could not create thread in launch.cpp");
     }
 
-    std::string addr2 = "ipc://part_TEST2_control";
+    arg2.addr = "ipc://part_TEST2_control";
+    arg2.runs = runs; //std::atoi(argv[1]);
+    arg2.math = math; //std::atoi(argv[2]);
+    arg2.print = print; //std::atoi(argv[3]);
 
-    if (pthread_create(&t2, NULL, (void * _Nullable (* _Nonnull)(void * _Nullable))thread1, &addr2) == -1) {
+    if (pthread_create(&t2, NULL, (void * _Nullable (* _Nonnull)(void * _Nullable))thread1, &arg2) == -1) {
         error("Main: Could not create thread in launch.cpp");
     }
 
-    // std::cout << "Joining Thread" << std::endl;
+    if (print) { std::cout << "Joining Thread" << std::endl; }
 
     pthread_join(t1, NULL);
     pthread_join(t2, NULL);

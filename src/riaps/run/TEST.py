@@ -1,13 +1,13 @@
 # TEST Python file
 
 import zmq
-from ctypes import CDLL, c_int
+from ctypes import CDLL, c_int, c_char_p
 import jsonplus as json
 import threading
 from collections import namedtuple
 import timeit
 
-def main(runs):
+def main(runs, math = 0, debug = 0):
     start_time = timeit.default_timer()
 
     context1 = zmq.Context()
@@ -19,17 +19,19 @@ def main(runs):
     control2 = context2.socket(zmq.PAIR)
     control2.bind('ipc://part_TEST2_control')
 
-    # print("Python: launching c++ .so")
+    if debug: print("Python: launching c++ .so")
     libc = CDLL("launch.so")
-    t = threading.Thread(target=libc.main, args=(c_int(runs), ))
+    args = str(runs) + " " + str(math) + " " + str(debug)
+    args = c_char_p(args.encode())
+    t = threading.Thread(target=libc.launch, args=(runs, math, debug, ))
     t.start()
 
     i = 0
     while (i < runs):
-        # print("Python: ready to receive")
+        if debug: print("Python: ready to receive")
         message = control1.recv()
         message = json.loads(message)
-        # print("Python: received: " + str(message) + " of type: " + str(type(message)))
+        if debug: print("Python: received: " + str(message) + " of type: " + str(type(message)))
 
         Point = namedtuple("Point", ["x", "y"])
         send = json.dumps(Point(i, i+1))
