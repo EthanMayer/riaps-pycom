@@ -19,6 +19,7 @@ typedef struct {
     int runs;
     int math;
     int print;
+    int root;
 } arg_array;
 
 // Error handling
@@ -27,7 +28,7 @@ void error(std::string msg) {
     exit(-1);
 }
 
-extern "C" int launch(int runs, int math = 0, int print = 0) {
+extern "C" int launch(int runs, int math = 0, int print = 0, int root = 0) {
     pthread_t t1;
     pthread_t t2;
     arg_array arg1, arg2;
@@ -53,6 +54,7 @@ extern "C" int launch(int runs, int math = 0, int print = 0) {
     arg1.runs = runs; //std::atoi(argv[1]);
     arg1.math = math; //std::atoi(argv[2]);
     arg1.print = print; //std::atoi(argv[3]);
+    arg1.root = root;
 
     if (pthread_create(&t1, NULL, (void * _Nullable (* _Nonnull)(void * _Nullable))thread1, &arg1) == -1) {
         error("Main: Could not create thread in launch.cpp");
@@ -62,6 +64,7 @@ extern "C" int launch(int runs, int math = 0, int print = 0) {
     arg2.runs = runs; //std::atoi(argv[1]);
     arg2.math = math; //std::atoi(argv[2]);
     arg2.print = print; //std::atoi(argv[3]);
+    arg2.root = root;
 
     if (pthread_create(&t2, NULL, (void * _Nullable (* _Nonnull)(void * _Nullable))thread1, &arg2) == -1) {
         error("Main: Could not create thread in launch.cpp");

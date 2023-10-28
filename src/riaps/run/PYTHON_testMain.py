@@ -21,7 +21,7 @@ def fib(n):
 
     return curNum
 
-def threadBody(context, addr, runs, math = 0, debug = 0):
+def threadBody(context, addr, runs, math = 0, debug = 0, root = 0):
     control = context.socket(zmq.PAIR)
     control.connect(addr)
 
@@ -30,7 +30,10 @@ def threadBody(context, addr, runs, math = 0, debug = 0):
         if debug: print("Python_Thread: ready to send")
 
         if math: 
-            x = fib(int(sqrt(i)))
+            if root:
+                x = fib(int(sqrt(i)))
+            else:
+                x = fib(int(i))
             send_str = "Fibonacci number of sqrt(" + str(i) + ")"
             send = json.dumps((send_str, x))
         else:
@@ -44,7 +47,7 @@ def threadBody(context, addr, runs, math = 0, debug = 0):
         # i = message.y
         i = i + 1
 
-def main(runs, math = 0, debug = 0):
+def main(runs, math = 0, debug = 0, root = 0):
     start_time = timeit.default_timer()
 
     context1 = zmq.Context()
@@ -57,30 +60,39 @@ def main(runs, math = 0, debug = 0):
     control2 = context2.socket(zmq.PAIR)
     control2.bind('inproc://PYTHON_TEST2_control')
 
-    t = threading.Thread(target=threadBody, args=(context1, 'inproc://PYTHON_TEST1_control', runs, math, debug, ))
+    poller = zmq.Poller()
+    poller.register(control1, zmq.POLLIN)
+    poller.register(control2, zmq.POLLIN)
+
+    t = threading.Thread(target=threadBody, args=(context1, 'inproc://PYTHON_TEST1_control', runs, math, debug, root, ))
     t.start()
 
-    t2 = threading.Thread(target=threadBody, args=(context2, 'inproc://PYTHON_TEST2_control', runs, math, debug, ))
+    t2 = threading.Thread(target=threadBody, args=(context2, 'inproc://PYTHON_TEST2_control', runs, math, debug, root, ))
     t2.start()
 
-    i = 0
-    while (i < runs):
-        if debug: print("Python_Main: ready to receive")
-        message = control1.recv()
-        message = json.loads(message)
-        if debug: print("Python_Main: received: " + str(message) + " of type: " + str(type(message)))
+    i1 = 0
+    i2 = 0
+    while (i1 < runs and i2 < runs):
+        controls = dict(poller.poll())
 
-        Point = namedtuple("Point", ["x", "y"])
-        send = json.dumps(Point(i, i+1))
-        control1.send_json(send)
+        if control1 in controls and i1 < runs:
+            if debug: print("Python_Main: ready to receive")
+            message = control1.recv()
+            message = json.loads(message)
+            if debug: print("Python_Main: received: " + str(message) + " of type: " + str(type(message)))
 
-        message = control2.recv()
-        message = json.loads(message)
-        Point = namedtuple("Point", ["x", "y"])
-        send = json.dumps(Point(i, i+1))
-        control2.send(bytes(send, encoding='utf8'))
+            Point = namedtuple("Point", ["x", "y"])
+            send = json.dumps(Point(i1, i1+1))
+            control1.send_json(send)
+            i1 = i1 + 1
 
-        i = i + 1
+        if control2 in controls and i2 < runs:
+            message = control2.recv()
+            message = json.loads(message)
+            Point = namedtuple("Point", ["x", "y"])
+            send = json.dumps(Point(i2, i2+1))
+            control2.send(bytes(send, encoding='utf8'))
+            i2 = i2 + 1
 
     end_time = timeit.default_timer()
     total_time = end_time - start_time

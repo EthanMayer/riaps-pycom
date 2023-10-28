@@ -8,10 +8,12 @@ if (len(sys.argv) > 1):
     runs = int(sys.argv[1])
     math = int(sys.argv[2])
     debug = int(sys.argv[3])
+    root = int(sys.argv[4])
 else:
     runs = 100000
     math = 0
     debug = 0
+    root = 1
 
 print("===================================")
 print("SPEED TESTS")
@@ -20,6 +22,7 @@ print("Tests Per Category: 10")
 print("Messages Per Test: " + str(runs))
 print("Work Between Messages: " + str(bool(math)))
 print("Debug Print: " + str(bool(debug)))
+print("Square Root Fib: " + str(bool(root)))
 print("===================================")
 
 print("===================================")
@@ -27,7 +30,7 @@ print("Running PURE PYTHON Tests...")
 times = []
 
 for i in range(10):
-    times.append(main(runs, math, debug))
+    times.append(main(runs, math, debug, root))
 
 times = list(np.around(np.array(times), 3))
 
@@ -45,7 +48,7 @@ print("Running PYTHON + C++ Tests...")
 times = []
 
 for i in range(10):
-    times.append(main_c(runs, math, debug))
+    times.append(main_c(runs, math, debug, root))
 
 times = list(np.around(np.array(times), 3))
 

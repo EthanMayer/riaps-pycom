@@ -7,7 +7,7 @@ import threading
 from collections import namedtuple
 import timeit
 
-def main(runs, math = 0, debug = 0):
+def main(runs, math = 0, debug = 0, root = 0):
     start_time = timeit.default_timer()
 
     context1 = zmq.Context()
@@ -19,33 +19,40 @@ def main(runs, math = 0, debug = 0):
     control2 = context2.socket(zmq.PAIR)
     control2.bind('ipc://part_TEST2_control')
 
+    poller = zmq.Poller()
+    poller.register(control1, zmq.POLLIN)
+    poller.register(control2, zmq.POLLIN)
+
     if debug: print("Python: launching c++ .so")
     libc = CDLL("launch.so")
-    args = str(runs) + " " + str(math) + " " + str(debug)
-    args = c_char_p(args.encode())
-    t = threading.Thread(target=libc.launch, args=(runs, math, debug, ))
+    t = threading.Thread(target=libc.launch, args=(runs, math, debug, root, ))
     t.start()
 
-    i = 0
-    while (i < runs):
-        if debug: print("Python: ready to receive")
-        message = control1.recv()
-        message = json.loads(message)
-        if debug: print("Python: received: " + str(message) + " of type: " + str(type(message)))
+    i1 = 0
+    i2 = 0
+    while (i1 < runs and i2 < runs):
+        controls = dict(poller.poll())
 
-        Point = namedtuple("Point", ["x", "y"])
-        send = json.dumps(Point(i, i+1))
-        # send = json.pretty({"dot": Point(1, 2)})
-        control1.send(bytes(send, encoding='utf8'))
+        if control1 in controls and i1 < runs:
+            if debug: print("Python: ready to receive")
+            message = control1.recv()
+            message = json.loads(message)
+            if debug: print("Python: received: " + str(message) + " of type: " + str(type(message)))
 
-        message = control2.recv()
-        message = json.loads(message)
+            Point = namedtuple("Point", ["x", "y"])
+            send = json.dumps(Point(i1, i1+1))
+            # send = json.pretty({"dot": Point(1, 2)})
+            control1.send(bytes(send, encoding='utf8'))
+            i1 = i1 + 1
 
-        Point = namedtuple("Point", ["x", "y"])
-        send = json.dumps(Point(i, i+1))
-        control2.send(bytes(send, encoding='utf8'))
+        if control2 in controls and i2 < runs:
+            message = control2.recv()
+            message = json.loads(message)
 
-        i = i + 1
+            Point = namedtuple("Point", ["x", "y"])
+            send = json.dumps(Point(i2, i2+1))
+            control2.send(bytes(send, encoding='utf8'))
+            i2 = i2 + 1
 
     end_time = timeit.default_timer()
     total_time = end_time - start_time

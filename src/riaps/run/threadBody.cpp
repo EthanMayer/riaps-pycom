@@ -16,6 +16,7 @@ typedef struct {
     int runs;
     int math;
     int print;
+    int root;
 } arg_array;
 
 int fib(int n) {
@@ -51,10 +52,15 @@ extern "C" void* thread1(arg_array arg) {
     std::string send_str;
     zmq::message_t reply;
     nlohmann::json reply_json;
+    int x = 0;
 
     while (i < arg.runs) {
         if (arg.math) {
-            int x = fib((int)std::sqrt(i));
+            if (arg.root) {
+                x = fib((int)std::sqrt(i));
+            } else {
+                x = fib((int)i);
+            }
             std::string send_fib_str = "Fibonacci number of sqrt(" + std::to_string(i) + ")";
             nlohmann::json send_fib;
             send_fib[send_fib_str] = x;
